@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎣 Gone Fishin'!</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box; margin: 0; padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: bold; font-style: normal;
+    }
+    body { overflow: hidden; user-select: none; background: #031824; color: #fff; }
+
+    /* ── HUD ── */
+    .hud {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .home-btn {
+      color: #80dfff; text-decoration: none; font-size: 0.95em;
+      padding: 8px 16px; border-radius: 20px;
+      border: 1px solid rgba(128,223,255,0.3); transition: background 0.15s;
+    }
+    .home-btn:hover { background: rgba(128,223,255,0.1); }
+    .hud-stats { display: flex; gap: 32px; }
+    .hud-stat  { text-align: center; }
+    .hud-label { font-size: 0.65em; color: rgba(255,255,255,0.5); letter-spacing: 2px; text-transform: uppercase; }
+    .hud-value { font-size: 2em; color: #FFD700; line-height: 1; }
+    #timerValue        { color: #80dfff; }
+    #timerValue.urgent { animation: timerUrgent 0.5s ease-in-out infinite alternate; }
+    @keyframes timerUrgent { from { color: #ff6688; } to { color: #ff0033; transform: scale(1.12); } }
+
+    /* ── FISH COUNTER BAR ── */
+    .fish-counts {
+      position: fixed; top: 64px; left: 0; right: 0; z-index: 19;
+      display: flex; align-items: center; justify-content: center; gap: 24px;
+      padding: 6px 20px;
+      background: rgba(0,0,0,0.35); backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.85em;
+    }
+    .fc-item { display: flex; align-items: center; gap: 7px; color: rgba(255,255,255,0.85); }
+    .fc-dot  { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+    .fc-num  { font-size: 1.1em; color: #fff; min-width: 16px; }
+
+    /* ── SCENE ── */
+    #scene {
+      position: fixed; left: 0; right: 0; top: 98px; bottom: 0;
+      display: flex; flex-direction: column;
+    }
+
+    /* Sky */
+    .sky {
+      height: 18%; flex-shrink: 0;
+      background: linear-gradient(180deg, #3a9fd0 0%, #70c8e8 70%, #b8e8f8 100%);
+      position: relative; overflow: hidden;
+    }
+    /* Sun */
+    .sky::before {
+      content: ''; position: absolute; top: 12%; right: 15%;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: radial-gradient(circle, #fff9c0, #ffd700 60%, transparent 100%);
+      box-shadow: 0 0 30px 10px rgba(255,220,50,0.4);
+    }
+    /* Clouds */
+    .cloud {
+      position: absolute; background: rgba(255,255,255,0.88);
+      border-radius: 50px; pointer-events: none;
+    }
+
+    /* Dock + rod */
+    .dock {
+      position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .dock-plank {
+      width: 60px; height: 10px;
+      background: linear-gradient(180deg, #8B6914, #5c400a);
+      border-radius: 4px 4px 0 0;
+    }
+    .rod {
+      width: 5px; height: 52px;
+      background: linear-gradient(180deg, #5c3010, #8B5020);
+      border-radius: 3px 3px 0 0;
+      transform: rotate(-12deg);
+      transform-origin: bottom center;
+      position: relative;
+    }
+    /* Rod tip line to water */
+    .rod-line {
+      position: absolute;
+      top: 2px; right: -1px;
+      width: 1px; height: 200px;
+      background: linear-gradient(180deg, rgba(200,200,200,0.8), rgba(200,200,200,0.2));
+      transform-origin: top center;
+      transform: rotate(12deg);
+    }
+
+    /* Water surface */
+    .water-surface {
+      height: 26px; flex-shrink: 0; position: relative; z-index: 3;
+      background: linear-gradient(180deg, #1e9cbf 0%, #0e7a9e 100%);
+      overflow: hidden;
+    }
+    .water-surface::before, .water-surface::after {
+      content: ''; position: absolute;
+      height: 5px; border-radius: 5px; top: 7px;
+      background: rgba(255,255,255,0.3);
+      animation: waveSway 2.8s ease-in-out infinite;
+    }
+    .water-surface::before { left: 8%;  width: 18%; }
+    .water-surface::after  { left: 58%; width: 26%; animation-delay: 1.4s; }
+    @keyframes waveSway {
+      0%,100% { opacity: 0.3; transform: scaleX(1); }
+      50%      { opacity: 0.6; transform: scaleX(1.25); }
+    }
+
+    /* Underwater */
+    .underwater {
+      flex: 1; position: relative; overflow: hidden;
+      background: linear-gradient(180deg, #0d7a9e 0%, #074e6e 40%, #031824 100%);
+    }
+
+    /* Hook in water */
+    .hook-line {
+      position: absolute; left: 50%; top: 0;
+      width: 1.5px; height: 32%;
+      background: linear-gradient(180deg, rgba(220,220,220,0.7), rgba(180,180,180,0.2));
+      transform: translateX(-50%); z-index: 4; pointer-events: none;
+    }
+    .hook {
+      position: absolute; left: calc(50% - 7px); top: 32%; z-index: 4; pointer-events: none;
+    }
+    .hook svg { width: 14px; height: 18px; }
+
+    /* Light rays */
+    .ray {
+      position: absolute; top: 0;
+      width: 36px;
+      background: linear-gradient(180deg, rgba(100,200,255,0.07), transparent);
+      pointer-events: none;
+    }
+
+    /* Ambient bubbles */
+    .bbl {
+      position: absolute; border-radius: 50%;
+      border: 1px solid rgba(100,220,255,0.4);
+      background: rgba(100,200,255,0.06);
+      animation: bblRise linear infinite;
+      pointer-events: none;
+    }
+    @keyframes bblRise {
+      from { transform: translateY(0) translateX(0); opacity: 0.7; }
+      to   { transform: translateY(-110vh) translateX(var(--bx)); opacity: 0; }
+    }
+
+    /* Seaweed */
+    .weed {
+      position: absolute; bottom: 0;
+      border-radius: 8px 8px 2px 2px;
+      transform-origin: bottom center;
+      animation: weedSway ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes weedSway { 0%,100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
+
+    /* Sandy bottom */
+    .sandy {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 28px;
+      background: linear-gradient(180deg, #1a3a1a, #0e3a0e);
+      border-radius: 50% 50% 0 0 / 20px 20px 0 0;
+    }
+
+    /* ── FISH ── */
+    .fish-wrap {
+      position: absolute; cursor: pointer; z-index: 5;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+      transition: filter 0.1s;
+    }
+    .fish-wrap:hover { filter: drop-shadow(0 4px 12px rgba(255,255,255,0.3)); }
+    .fish-wrap svg { display: block; }
+
+    /* Dwell ring */
+    .fish-ring {
+      position: absolute; pointer-events: none; z-index: 6;
+    }
+    .fish-ring .r-track { fill: none; stroke: rgba(255,255,255,0.18); stroke-width: 4; }
+    .fish-ring .r-fill  {
+      fill: none; stroke: #FFD700; stroke-width: 4; stroke-linecap: round;
+      stroke-dasharray: 138; stroke-dashoffset: 138; /* 2π×22 */
+      transform: rotate(-90deg); transform-origin: 50% 50%;
+    }
+
+    /* Catch animation */
+    @keyframes catchRise {
+      0%   { transform: translateY(0) rotate(0deg) scaleX(var(--sx)); opacity: 1; }
+      30%  { transform: translateY(-50px) rotate(-25deg) scaleX(var(--sx)); opacity: 1; }
+      80%  { transform: translateY(var(--rise)) rotate(-50deg) scaleX(var(--sx)); opacity: 0.9; }
+      100% { transform: translateY(var(--rise)) rotate(-50deg) scaleX(var(--sx)); opacity: 0; }
+    }
+    .fish-wrap.rising { animation: catchRise 0.85s ease-in forwards; pointer-events: none; }
+
+    /* Splash */
+    .splash-drop {
+      position: fixed; pointer-events: none; z-index: 30; font-size: 1.3em;
+      animation: splashDrop 0.65s ease-out forwards;
+    }
+    @keyframes splashDrop {
+      0%   { transform: translate(0,0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--sx),var(--sy)) scale(0.3); opacity: 0; }
+    }
+
+    /* Score popup */
+    .score-pop {
+      position: fixed; pointer-events: none; z-index: 35;
+      font-size: 1.9em; color: #FFD700;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 0 20px rgba(255,215,0,0.5);
+      animation: scorePop 0.9s ease-out forwards;
+    }
+    @keyframes scorePop {
+      0%   { transform: translateY(0) scale(0.5); opacity: 1; }
+      40%  { transform: translateY(-28px) scale(1.25); opacity: 1; }
+      100% { transform: translateY(-100px) scale(1); opacity: 0; }
+    }
+
+    /* Fish legend in HUD */
+    .legend { display: flex; gap: 14px; align-items: center; font-size: 0.78em; color: rgba(255,255,255,0.7); }
+    .leg-item { display: flex; align-items: center; gap: 4px; }
+    .leg-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── OVERLAYS ── */
+    .overlay {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(3,24,36,0.92); backdrop-filter: blur(8px);
+      text-align: center; gap: 22px; padding: 24px;
+    }
+    .overlay.hidden { display: none; }
+    .overlay-title {
+      font-size: clamp(2.2em, 9vw, 4.5em);
+      background: linear-gradient(90deg, #FFD700, #80dfff, #44dd88);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      filter: drop-shadow(0 3px 10px rgba(0,0,0,0.5));
+    }
+    .overlay-sub   { font-size: 1.05em; color: #80dfff; max-width: 400px; line-height: 1.6; }
+    .overlay-score { font-size: 3.2em; color: #FFD700; }
+    .fish-legend-overlay {
+      display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;
+      font-size: 0.9em; color: rgba(255,255,255,0.75);
+    }
+    .flo { display: flex; align-items: center; gap: 6px; }
+    .flo-dot { width: 14px; height: 14px; border-radius: 50%; }
+    .btn-big {
+      font-size: 1.25em; padding: 15px 50px; border-radius: 50px;
+      border: none; cursor: pointer;
+      background: linear-gradient(145deg, #FFD700, #FF9A00); color: #1a1040;
+      transition: transform 0.1s, box-shadow 0.1s;
+      box-shadow: 0 6px 24px rgba(255,180,0,0.4);
+    }
+    .btn-big:hover  { transform: translateY(-3px); box-shadow: 0 10px 32px rgba(255,180,0,0.55); }
+    .btn-big:active { transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<div class="hud">
+  <a class="home-btn" href="index.html">← All Games</a>
+  <div class="hud-stats">
+    <div class="hud-stat">
+      <div class="hud-label">Caught</div>
+      <div class="hud-value" id="caughtDisplay">0</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-label">Score</div>
+      <div class="hud-value" id="scoreDisplay">0</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-label">Time</div>
+      <div class="hud-value" id="timerValue">90</div>
+    </div>
+  </div>
+  <div style="min-width:90px"></div>
+</div>
+
+<div class="fish-counts">
+  <div class="fc-item"><div class="fc-dot" style="background:#3a7fff"></div> Blue <span class="fc-num" id="cnt-blue">0</span></div>
+  <div class="fc-item"><div class="fc-dot" style="background:#28bb44"></div> Green <span class="fc-num" id="cnt-green">0</span></div>
+  <div class="fc-item"><div class="fc-dot" style="background:#ff7722"></div> Orange <span class="fc-num" id="cnt-orange">0</span></div>
+  <div class="fc-item"><div class="fc-dot" style="background:#FFD700"></div> Golden <span class="fc-num" id="cnt-gold">0</span></div>
+</div>
+
+<div id="scene">
+  <div class="sky" id="sky">
+    <div class="dock">
+      <div class="rod"><div class="rod-line"></div></div>
+      <div class="dock-plank"></div>
+    </div>
+  </div>
+  <div class="water-surface"></div>
+  <div class="underwater" id="underwater">
+    <div class="hook-line"></div>
+    <div class="hook">
+      <svg viewBox="0 0 14 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M7,0 L7,11 Q7,17 13,17" stroke="#bbb" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="13" cy="16" r="2" fill="#bbb"/>
+      </svg>
+    </div>
+    <div class="sandy"></div>
+  </div>
+</div>
+
+<!-- Start -->
+<div class="overlay" id="startScreen">
+  <div class="overlay-title">🎣 Gone Fishin'!</div>
+  <div class="overlay-sub">Hover over a fish for 1.2 seconds to catch it! Rarer fish are worth more points.</div>
+  <div class="fish-legend-overlay">
+    <div class="flo"><div class="flo-dot" style="background:#4488ff"></div> Common — 10 pts</div>
+    <div class="flo"><div class="flo-dot" style="background:#33bb55"></div> Uncommon — 20 pts</div>
+    <div class="flo"><div class="flo-dot" style="background:#ff8833"></div> Rare — 30 pts</div>
+    <div class="flo"><div class="flo-dot" style="background:#FFD700"></div> Golden — 50 pts!</div>
+  </div>
+  <button class="btn-big" onclick="startGame()">▶ Cast Line!</button>
+</div>
+
+<!-- Game Over -->
+<div class="overlay hidden" id="gameOverScreen">
+  <div class="overlay-title">🐟 Nice Haul!</div>
+  <div class="overlay-sub">You caught <span id="finalCaught">0</span> fish!</div>
+  <div class="overlay-score" id="finalScore">0</div>
+  <button class="btn-big" onclick="startGame()">▶ Fish Again</button>
+</div>
+
+<script>
+// ── AUDIO ──────────────────────────────────────────────────────────
+let audioCtx = null;
+function getAC() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function sndBubblePop() {
+  try {
+    const ctx = getAC();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(600 + Math.random()*200, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.07);
+    g.gain.setValueAtTime(0.1, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+    o.start(); o.stop(ctx.currentTime + 0.09);
+  } catch(e) {}
+}
+function sndSplash() {
+  try {
+    const ctx = getAC();
+    const len = Math.floor(ctx.sampleRate * 0.32);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d   = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.exp(-i/len*8);
+    const src = ctx.createBufferSource();
+    const g   = ctx.createGain();
+    const lpf = ctx.createBiquadFilter();
+    lpf.type = 'lowpass'; lpf.frequency.value = 1400;
+    src.buffer = buf;
+    src.connect(lpf); lpf.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.55, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    src.start(); src.stop(ctx.currentTime + 0.36);
+  } catch(e) {}
+}
+function sndCatch(pts) {
+  try {
+    const ctx = getAC();
+    const scale = pts >= 50 ? [523,659,784,1047] : pts >= 30 ? [440,554,659] : pts >= 20 ? [392,494,587] : [330,415,494];
+    scale.forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine'; o.frequency.value = f;
+      const t = ctx.currentTime + i * 0.09;
+      g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.25);
+      o.start(t); o.stop(t+0.27);
+    });
+  } catch(e) {}
+}
+function sndTick() {
+  try {
+    const ctx = getAC();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type='square'; o.frequency.value=880;
+    g.gain.setValueAtTime(0.06, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.06);
+    o.start(); o.stop(ctx.currentTime+0.06);
+  } catch(e) {}
+}
+function sndEnd() {
+  try {
+    const ctx = getAC();
+    [523,440,392,330].forEach((f,i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='sine'; o.frequency.value=f;
+      const t=ctx.currentTime+i*0.18;
+      g.gain.setValueAtTime(0.2,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+      o.start(t); o.stop(t+0.32);
+    });
+  } catch(e) {}
+}
+
+// ── FISH TYPES ──────────────────────────────────────────────────────
+const FISH_TYPES = [
+  { name:'blue',   body:'#3a7fff', belly:'#88bbff', fin:'#1a4fcc', pts:10, w:88, spd:1.0, wt:45 },
+  { name:'green',  body:'#28bb44', belly:'#77ee99', fin:'#166628', pts:20, w:72, spd:1.6, wt:30 },
+  { name:'orange', body:'#ff7722', belly:'#ffbb66', fin:'#bb3300', pts:30, w:58, spd:2.1, wt:18 },
+  { name:'gold',   body:'#FFD700', belly:'#fff0a0', fin:'#bb8800', pts:50, w:46, spd:3.4, wt:7  },
+];
+
+function makeFishSVG(t, goRight) {
+  const sx = goRight ? 1 : -1;
+  const h  = Math.round(t.w * 0.52);
+  return `<svg viewBox="0 0 90 47" width="${t.w}" height="${h}"
+    xmlns="http://www.w3.org/2000/svg"
+    style="display:block;transform:scaleX(${sx})">
+    <polygon points="20,23 1,7 5,23 1,39" fill="${t.fin}"/>
+    <ellipse cx="52" cy="23" rx="34" ry="18" fill="${t.body}"/>
+    <ellipse cx="54" cy="28" rx="26" ry="10" fill="${t.belly}" opacity="0.38"/>
+    <path d="M40,7 Q55,1 67,10" stroke="${t.fin}" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M42,39 Q52,45 60,38" stroke="${t.fin}" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <circle cx="72" cy="19" r="5.5" fill="white"/>
+    <circle cx="73" cy="19" r="3"   fill="#0d0d22"/>
+    <circle cx="74" cy="18" r="1.2" fill="white"/>
+    <path d="M87,23 Q90,25 87,28" stroke="${t.fin}" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+
+// ── GAME STATE ──────────────────────────────────────────────────────
+const DWELL_MS  = 1200;
+const GAME_SECS = 90;
+const RING_CIRC = 138; // 2π×22
+
+let G = {
+  score:0, caught:0, timeLeft:GAME_SECS, running:false,
+  fish:[], spawnTimer:null, countdownTimer:null, rafId:null, lastTime:0, nextId:0,
+  counts:{ blue:0, green:0, orange:0, gold:0 },
+};
+
+const uwEl    = document.getElementById('underwater');
+const scoreEl = document.getElementById('scoreDisplay');
+const caughtEl= document.getElementById('caughtDisplay');
+const timerEl = document.getElementById('timerValue');
+
+// ── SCENE SETUP ─────────────────────────────────────────────────────
+function buildScene() {
+  // Clouds
+  const sky = document.getElementById('sky');
+  [[12,8,80,20],[38,14,55,18],[68,6,72,22]].forEach(([l,t,w,h]) => {
+    const c = document.createElement('div'); c.className='cloud';
+    c.style.cssText=`left:${l}%;top:${t}%;width:${w}px;height:${h}px;`;
+    sky.appendChild(c);
+  });
+  // Light rays
+  [15,30,50,68,82].forEach((lp, i) => {
+    const r = document.createElement('div'); r.className='ray';
+    const ang = [-22,-10,0,10,20][i];
+    const h   = [55,70,80,65,50][i];
+    r.style.cssText=`left:${lp}%;height:${h}%;transform:rotate(${ang}deg);transform-origin:top center;`;
+    uwEl.appendChild(r);
+  });
+  // Bubbles
+  for (let i=0;i<14;i++) {
+    const b=document.createElement('div'); b.className='bbl';
+    const sz=3+Math.random()*9;
+    b.style.cssText=`width:${sz}px;height:${sz}px;left:${5+Math.random()*90}%;bottom:${Math.random()*100}%;`;
+    b.style.setProperty('--bx',(Math.random()*36-18)+'px');
+    b.style.animationDuration=(7+Math.random()*9)+'s';
+    b.style.animationDelay=(-Math.random()*14)+'s';
+    uwEl.appendChild(b);
+  }
+  // Seaweed
+  const swc=['#1a7a3a','#2a9a4a','#156030','#0e4d28'];
+  for (let i=0;i<10;i++) {
+    const s=document.createElement('div'); s.className='weed';
+    const h=28+Math.random()*52, w=8+Math.random()*6;
+    s.style.cssText=`width:${w}px;height:${h}px;left:${3+Math.random()*94}%;background:linear-gradient(180deg,${swc[i%4]},${swc[(i+2)%4]});animation-duration:${2.5+Math.random()*2}s;animation-delay:${-Math.random()*3}s;`;
+    uwEl.appendChild(s);
+  }
+}
+
+// ── SPAWN FISH ──────────────────────────────────────────────────────
+function pickType() {
+  const total = FISH_TYPES.reduce((s,t)=>s+t.wt,0);
+  let r = Math.random()*total;
+  for (const t of FISH_TYPES) { r-=t.wt; if (r<=0) return t; }
+  return FISH_TYPES[0];
+}
+
+function spawnFish() {
+  if (!G.running) return;
+  const areaW = uwEl.clientWidth;
+  const areaH = uwEl.clientHeight;
+  const type  = pickType();
+  const goRight = Math.random()<0.5;
+  const fishH = Math.round(type.w*0.52);
+  const y = areaH * (0.07 + Math.random()*0.72);
+  const x = goRight ? -(type.w+10) : areaW+10;
+  const spd = (type.spd + Math.random()*0.5) * (goRight?1:-1);
+  const id  = G.nextId++;
+
+  const wrap = document.createElement('div');
+  wrap.className='fish-wrap';
+  wrap.style.left=x+'px'; wrap.style.top=y+'px';
+  wrap.innerHTML = makeFishSVG(type, goRight);
+
+  // Dwell ring
+  const ringSize = type.w+20;
+  const rSVG = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  rSVG.classList.add('fish-ring');
+  rSVG.setAttribute('viewBox','0 0 50 50');
+  rSVG.style.cssText=`width:${ringSize}px;height:${ringSize}px;top:${(fishH-ringSize)/2}px;left:${(type.w-ringSize)/2}px;`;
+  rSVG.innerHTML=`<circle class="r-track" cx="25" cy="25" r="22"/>
+    <circle class="r-fill" cx="25" cy="25" r="22"/>`;
+  wrap.appendChild(rSVG);
+  uwEl.appendChild(wrap);
+
+  const fish = { id, wrap, type, x, y, spd, goRight, fishH,
+    ring: rSVG.querySelector('.r-fill'), dwellRaf:null, caught:false };
+
+  wrap.addEventListener('pointerenter', ()=>{ if(!G.running||fish.caught)return; startDwell(fish); });
+  wrap.addEventListener('pointerleave', ()=>{ cancelDwell(fish); });
+
+  G.fish.push(fish);
+}
+
+// ── DWELL ────────────────────────────────────────────────────────────
+function startDwell(fish) {
+  cancelDwell(fish);
+  sndBubblePop();
+  const t0=performance.now();
+  function frame(now) {
+    const p=Math.min((now-t0)/DWELL_MS,1);
+    fish.ring.style.strokeDashoffset=RING_CIRC*(1-p);
+    if (p<1) { fish.dwellRaf=requestAnimationFrame(frame); }
+    else     { catchFish(fish); }
+  }
+  fish.dwellRaf=requestAnimationFrame(frame);
+}
+function cancelDwell(fish) {
+  if(fish.dwellRaf){ cancelAnimationFrame(fish.dwellRaf); fish.dwellRaf=null; }
+  if(fish.ring) fish.ring.style.strokeDashoffset=RING_CIRC;
+}
+
+// ── CATCH ─────────────────────────────────────────────────────────────
+function catchFish(fish) {
+  if (!G.running||fish.caught) return;
+  fish.caught=true;
+  cancelDwell(fish);
+  const idx=G.fish.indexOf(fish);
+  if (idx!==-1) G.fish.splice(idx,1);
+
+  sndSplash(); sndCatch(fish.type.pts);
+
+  // Compute rise distance to water surface
+  const risePx = -(fish.y + fish.fishH + 40);
+  fish.wrap.style.setProperty('--rise', risePx+'px');
+  fish.wrap.style.setProperty('--sx',   fish.goRight?'1':'-1');
+  fish.wrap.classList.add('rising');
+
+  // Splash at water surface
+  const sceneTop = document.getElementById('scene').getBoundingClientRect().top;
+  const surfaceY = sceneTop + uwEl.getBoundingClientRect().top - document.getElementById('scene').getBoundingClientRect().top - 4;
+  const fishRect = fish.wrap.getBoundingClientRect();
+  const cx = fishRect.left + fishRect.width/2;
+  spawnSplash(cx, surfaceY);
+
+  // Score popup
+  showScorePop(cx, surfaceY, fish.type.pts);
+
+  G.score  += fish.type.pts;
+  G.caught += 1;
+  G.counts[fish.type.name]++;
+  scoreEl.textContent  = G.score;
+  caughtEl.textContent = G.caught;
+  document.getElementById('cnt-' + fish.type.name).textContent = G.counts[fish.type.name];
+
+  setTimeout(()=>fish.wrap.remove(), 950);
+}
+
+function spawnSplash(cx, cy) {
+  ['💧','💦','〰️','〜','💧'].forEach((ch,i)=>{
+    const el=document.createElement('div'); el.className='splash-drop';
+    el.textContent=ch; el.style.left=cx+'px'; el.style.top=cy+'px';
+    const a=(i/5)*Math.PI*2;
+    el.style.setProperty('--sx',Math.cos(a)*(25+Math.random()*35)+'px');
+    el.style.setProperty('--sy',Math.sin(a)*(18+Math.random()*25)+'px');
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),700);
+  });
+}
+function showScorePop(cx, cy, pts) {
+  const el=document.createElement('div'); el.className='score-pop';
+  el.textContent='+'+pts+(pts>=50?' 🌟':'');
+  el.style.left=(cx-36)+'px'; el.style.top=(cy-10)+'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1000);
+}
+
+// ── ANIMATION LOOP ────────────────────────────────────────────────────
+function tick(ts) {
+  if (!G.running) return;
+  const dt=Math.min((ts-G.lastTime)/16.67,3);
+  G.lastTime=ts;
+  const areaW=uwEl.clientWidth;
+  for (let i=G.fish.length-1;i>=0;i--) {
+    const f=G.fish[i];
+    if (f.caught) continue;
+    f.x+=f.spd*dt;
+    f.wrap.style.left=f.x+'px';
+    if ((f.goRight&&f.x>areaW+20)||(!f.goRight&&f.x<-(f.type.w+20))) {
+      cancelDwell(f); f.wrap.remove(); G.fish.splice(i,1);
+    }
+  }
+  G.rafId=requestAnimationFrame(tick);
+}
+
+// ── TIMER ─────────────────────────────────────────────────────────────
+function tickTimer() {
+  G.timeLeft--;
+  timerEl.textContent=G.timeLeft;
+  if (G.timeLeft<=10){ timerEl.classList.add('urgent'); sndTick(); }
+  if (G.timeLeft<=0)  gameOver();
+}
+
+// ── START / END ────────────────────────────────────────────────────────
+function startGame() {
+  cancelAnimationFrame(G.rafId);
+  clearInterval(G.spawnTimer); clearInterval(G.countdownTimer);
+  G.fish.forEach(f=>{ cancelDwell(f); f.wrap.remove(); });
+  G.fish=[]; G.score=0; G.caught=0; G.timeLeft=GAME_SECS;
+  G.running=true; G.nextId=0; G.counts={blue:0,green:0,orange:0,gold:0};
+  scoreEl.textContent='0'; caughtEl.textContent='0';
+  timerEl.textContent=GAME_SECS; timerEl.classList.remove('urgent');
+  ['blue','green','orange','gold'].forEach(n=>document.getElementById('cnt-'+n).textContent='0');
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  spawnFish();
+  G.spawnTimer     = setInterval(spawnFish, 2000);
+  G.countdownTimer = setInterval(tickTimer, 1000);
+  G.lastTime=performance.now();
+  G.rafId=requestAnimationFrame(tick);
+}
+
+function gameOver() {
+  G.running=false;
+  clearInterval(G.spawnTimer); clearInterval(G.countdownTimer);
+  cancelAnimationFrame(G.rafId);
+  sndEnd();
+  setTimeout(()=>{
+    document.getElementById('finalScore').textContent=G.score;
+    document.getElementById('finalCaught').textContent=G.caught;
+    document.getElementById('gameOverScreen').classList.remove('hidden');
+  }, 700);
+}
+
+buildScene();
+</script>
+</body>
+</html>

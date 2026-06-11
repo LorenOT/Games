@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐾 Farm Feeding Fun!</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0; padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: bold;
+      font-style: normal;
+    }
+
+    body {
+      background: linear-gradient(160deg, #1a1040 0%, #2d1b6e 50%, #12102a 100%);
+      min-height: 100vh;
+      color: #fff;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(circle, #fff 1px, transparent 1px),
+        radial-gradient(circle, #fff 1px, transparent 1px);
+      background-size: 120px 120px, 80px 80px;
+      background-position: 0 0, 40px 60px;
+      opacity: 0.08;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── HUD ── */
+    .hud {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      background: rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+      border-bottom: 2px solid rgba(255,255,255,0.1);
+    }
+
+    .home-btn {
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 0.9em;
+      letter-spacing: 1px;
+      transition: color 0.2s;
+    }
+    .home-btn:hover { color: #FFD700; }
+
+    .hud-score {
+      font-size: 1.3em;
+      color: #FFD700;
+      letter-spacing: 1px;
+    }
+
+    .hud-timer {
+      font-size: 1.3em;
+      color: #fff;
+      letter-spacing: 1px;
+      min-width: 60px;
+      text-align: right;
+    }
+    .hud-timer.urgent { color: #FF4E6A; }
+
+    /* ── SCREENS ── */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 10;
+    }
+    .screen.hidden { display: none; }
+
+    /* ── PICK SCREEN ── */
+    .pick-title {
+      font-size: clamp(1.8em, 5vw, 3em);
+      background: linear-gradient(90deg, #FFD700, #FF9A00, #FF4E6A, #B44FFF, #4D96FF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .pick-subtitle {
+      font-size: 1.1em;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 36px;
+      text-align: center;
+    }
+
+    .animal-grid {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 700px;
+      padding: 0 16px;
+    }
+
+    .animal-pick-btn {
+      width: 120px;
+      height: 140px;
+      border-radius: 24px;
+      border: 3px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s, background 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .animal-pick-btn:hover {
+      transform: translateY(-6px) scale(1.04);
+      border-color: #FFD700;
+      background: rgba(255,255,255,0.15);
+    }
+
+    .animal-pick-emoji { font-size: 3.6em; line-height: 1; }
+    .animal-pick-name  { font-size: 0.9em; color: #fff; letter-spacing: 0.5px; }
+
+    /* dwell ring on pick buttons */
+    .pick-ring {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 110px; height: 110px;
+      pointer-events: none;
+    }
+    .pick-ring circle {
+      fill: none;
+      stroke: #FFD700;
+      stroke-width: 5;
+      stroke-linecap: round;
+      transform-origin: 55px 55px;
+      transform: rotate(-90deg);
+      stroke-dasharray: 314;
+      stroke-dashoffset: 314;
+    }
+
+    /* ── GAME SCREEN ── */
+    #gameScreen {
+      padding-top: 60px;
+      flex-direction: row;
+      align-items: stretch;
+      justify-content: center;
+      gap: 0;
+    }
+
+    /* Sky strip */
+    #gameScreen::after {
+      content: '';
+      position: fixed;
+      top: 60px; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(180deg, #4db8e8 0%, #87ceeb 100%);
+      z-index: 0;
+    }
+
+    /* Ground strip */
+    #gameScreen::before {
+      content: '';
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 110px;
+      background: linear-gradient(180deg, #3a7d34 0%, #2d6028 40%, #6b4e2a 100%);
+      z-index: 0;
+    }
+
+    /* Cloud decoration */
+    .cloud {
+      position: fixed;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.75;
+      animation: cloudDrift linear infinite;
+    }
+    @keyframes cloudDrift {
+      from { transform: translateX(-200px); }
+      to   { transform: translateX(calc(100vw + 200px)); }
+    }
+
+    .col-foods {
+      width: 190px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 20px 10px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .col-animal {
+      flex: 1;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ── FOOD CARD ── */
+    .food-card {
+      width: 158px;
+      height: 138px;
+      border-radius: 22px;
+      border: 3px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s, border-color 0.15s, background 0.15s;
+    }
+    .food-card:not(.used):hover {
+      transform: scale(1.05);
+      border-color: rgba(255,255,255,0.6);
+      background: rgba(255,255,255,0.18);
+    }
+    .food-card.used { opacity: 0.35; pointer-events: none; }
+
+    .food-emoji { font-size: 3em; line-height: 1; }
+    .food-name  { font-size: 0.95em; color: #fff; }
+
+    /* SVG ring overlay on food card */
+    .food-ring-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    .food-ring-svg ellipse {
+      fill: none;
+      stroke: #FFD700;
+      stroke-width: 5;
+      stroke-linecap: round;
+    }
+
+    /* ── ANIMAL DISPLAY ── */
+    .animal-stage {
+      width: 200px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 8px;
+    }
+
+    .animal-emoji-big {
+      font-size: 8.5em;
+      line-height: 1;
+      display: block;
+    }
+
+    @keyframes animalBounce {
+      0%   { transform: scale(1) translateY(0); }
+      20%  { transform: scale(1.2) translateY(-28px); }
+      40%  { transform: scale(0.9) translateY(0); }
+      55%  { transform: scale(1.1) translateY(-12px); }
+      70%  { transform: scale(1) translateY(0); }
+      82%  { transform: scale(1.05) translateY(-5px); }
+      100% { transform: scale(1) translateY(0); }
+    }
+    @keyframes animalShake {
+      0%   { transform: translateX(0) rotate(0deg); }
+      15%  { transform: translateX(-16px) rotate(-8deg); }
+      30%  { transform: translateX(16px) rotate(8deg); }
+      45%  { transform: translateX(-12px) rotate(-5deg); }
+      60%  { transform: translateX(12px) rotate(5deg); }
+      75%  { transform: translateX(-7px) rotate(-3deg); }
+      88%  { transform: translateX(7px) rotate(3deg); }
+      100% { transform: translateX(0) rotate(0deg); }
+    }
+    @keyframes animalSpin {
+      0%   { transform: rotate(0deg) scale(1); }
+      25%  { transform: rotate(15deg) scale(1.15); }
+      50%  { transform: rotate(-10deg) scale(1.1); }
+      75%  { transform: rotate(8deg) scale(1.05); }
+      100% { transform: rotate(0deg) scale(1); }
+    }
+    @keyframes animalShrink {
+      0%   { transform: scale(1); }
+      30%  { transform: scale(0.72) translateY(12px); }
+      60%  { transform: scale(0.85) translateY(5px); }
+      100% { transform: scale(1) translateY(0); }
+    }
+
+    .react-bounce { animation: animalBounce 0.8s ease both; }
+    .react-shake  { animation: animalShake 0.7s ease both; }
+    .react-spin   { animation: animalSpin 0.7s ease both; }
+    .react-shrink { animation: animalShrink 0.6s ease both; }
+
+    /* ── SPEECH BUBBLE ── */
+    .speech-bubble {
+      position: absolute;
+      top: -8px;
+      right: -24px;
+      min-width: 120px;
+      max-width: 170px;
+      padding: 10px 14px;
+      border-radius: 18px;
+      background: #fff;
+      color: #1a1040;
+      font-size: 1em;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      opacity: 0;
+      transform: scale(0.5) translateY(10px);
+      transition: opacity 0.22s, transform 0.22s;
+      pointer-events: none;
+      z-index: 20;
+      line-height: 1.3;
+    }
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      bottom: -11px;
+      left: 20px;
+      width: 0; height: 0;
+      border: 11px solid transparent;
+      border-top-color: #fff;
+      border-bottom: 0;
+    }
+    .speech-bubble.show {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+
+    /* ── RESULT FLASH ── */
+    .result-flash {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%) scale(0.5);
+      font-size: 3em;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0;
+      text-align: center;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    @keyframes flashUp {
+      0%   { opacity:0; transform: translate(-50%,-50%) scale(0.5); }
+      20%  { opacity:1; transform: translate(-50%,-60%) scale(1.2); }
+      70%  { opacity:1; transform: translate(-50%,-68%) scale(1); }
+      100% { opacity:0; transform: translate(-50%,-82%) scale(0.9); }
+    }
+    .result-flash.show { animation: flashUp 1.3s ease both; }
+
+    /* ── SCORE POPUP ── */
+    .score-popup {
+      position: fixed;
+      font-size: 2em;
+      color: #FFD700;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0;
+    }
+    @keyframes scoreFloat {
+      0%   { opacity:1; transform: translateY(0); }
+      100% { opacity:0; transform: translateY(-80px); }
+    }
+    .score-popup.show { animation: scoreFloat 1.1s ease both; }
+
+    .animal-name-tag {
+      font-size: 1.4em;
+      color: #FFD700;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    .animal-prompt {
+      font-size: 0.9em;
+      color: rgba(255,255,255,0.55);
+      margin-top: 4px;
+      text-align: center;
+    }
+
+    /* ── END SCREEN ── */
+    #endScreen { gap: 18px; text-align: center; }
+    .end-emoji  { font-size: 5em; }
+    .end-title  { font-size: clamp(2em, 6vw, 3.2em); color: #FFD700; }
+    .end-score-line { font-size: 1.5em; color: #fff; }
+    .end-breakdown  { font-size: 1em; color: rgba(255,255,255,0.6); line-height: 2; }
+    .end-btn {
+      font-size: 1.1em;
+      padding: 16px 40px;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(145deg, #B44FFF, #7B2FFF);
+      color: #fff;
+      box-shadow: 0 6px 24px rgba(140,60,255,0.4);
+      transition: transform 0.1s;
+    }
+    .end-btn:hover { transform: translateY(-3px); }
+  </style>
+</head>
+<body>
+
+<!-- HUD -->
+<div class="hud" id="hud" style="display:none">
+  <a class="home-btn" href="index.html">← Back</a>
+  <div class="hud-score">⭐ <span id="hudScore">0</span></div>
+  <div class="hud-timer" id="hudTimer">60s</div>
+</div>
+
+<!-- PICK SCREEN -->
+<div class="screen" id="pickScreen">
+  <div class="pick-title">🐾 Farm Feeding Fun!</div>
+  <div class="pick-subtitle">Hover over an animal to choose it!</div>
+  <div class="animal-grid" id="animalGrid"></div>
+</div>
+
+<!-- GAME SCREEN -->
+<div class="screen hidden" id="gameScreen">
+  <div class="col-foods" id="leftFoods"></div>
+
+  <div class="col-animal">
+    <div class="animal-stage">
+      <span class="animal-emoji-big" id="animalEmoji">🐷</span>
+      <div class="speech-bubble" id="speechBubble">Yum!</div>
+    </div>
+    <div class="animal-name-tag" id="animalNameTag"></div>
+    <div class="animal-prompt">Hover a food to feed me!</div>
+  </div>
+
+  <div class="col-foods" id="rightFoods"></div>
+</div>
+
+<!-- END SCREEN -->
+<div class="screen hidden" id="endScreen">
+  <div class="end-emoji" id="endEmoji">🌟</div>
+  <div class="end-title">Game Over!</div>
+  <div class="end-score-line">You scored <span id="endScore">0</span> points!</div>
+  <div class="end-breakdown" id="endBreakdown"></div>
+  <button class="end-btn" id="playAgainBtn">Play Again! 🎉</button>
+  <a class="home-btn" href="index.html" style="margin-top:8px">← Back to All Games</a>
+</div>
+
+<!-- Floating result flash -->
+<div class="result-flash" id="resultFlash"></div>
+
+<script>
+// ── ANIMAL DATA ───────────────────────────────────────────────────────────────
+
+const ANIMALS = [
+  {
+    id: 'pig', name: 'Pig', emoji: '🐷',
+    loved: [
+      { emoji:'🌽', name:'Corn',     reaction:'bounce', speech:'Oink! Delicious! 🌽' },
+      { emoji:'🥕', name:'Carrot',   reaction:'bounce', speech:'So crunchy! Oink!' },
+      { emoji:'🍎', name:'Apple',    reaction:'bounce', speech:'My favorite! Oink!' },
+      { emoji:'🌰', name:'Acorn',    reaction:'bounce', speech:'Yum yum yum! Oink!' },
+      { emoji:'🥦', name:'Broccoli', reaction:'bounce', speech:'Healthy and yummy!' },
+    ],
+    disliked: [
+      { emoji:'🍕', name:'Pizza',    reaction:'shake',  speech:'Pigs don\'t eat that!' },
+      { emoji:'🌶️', name:'Chili',   reaction:'shake',  speech:'TOO SPICY! 🥵 Oink!' },
+      { emoji:'🍋', name:'Lemon',    reaction:'shake',  speech:'So SOUR! 😖 Oink!' },
+      { emoji:'🍦', name:'Ice Cream',reaction:'shrink', speech:'Too cold! Brrr! Oink!' },
+    ]
+  },
+  {
+    id: 'horse', name: 'Horse', emoji: '🐴',
+    loved: [
+      { emoji:'🌾', name:'Hay',        reaction:'bounce', speech:'Neigh! Tasty hay!' },
+      { emoji:'🍎', name:'Apple',      reaction:'bounce', speech:'My favorite treat! 🍎' },
+      { emoji:'🥕', name:'Carrot',     reaction:'bounce', speech:'Crunch crunch! Neigh!' },
+      { emoji:'🍬', name:'Sugar Cube', reaction:'spin',   speech:'Oh so sweet! Neigh! 💨' },
+      { emoji:'🌿', name:'Grass',      reaction:'bounce', speech:'Fresh and yummy! Neigh!' },
+    ],
+    disliked: [
+      { emoji:'🌶️', name:'Chili',  reaction:'shake',  speech:'WAY too spicy! Neigh!' },
+      { emoji:'🍕', name:'Pizza',  reaction:'shake',  speech:'Horses eat hay, not pizza!' },
+      { emoji:'🐟', name:'Fish',   reaction:'shake',  speech:'Eww! Not for me! Neigh!' },
+      { emoji:'🧄', name:'Garlic', reaction:'shrink', speech:'That stinks! 🤢 Neigh!' },
+    ]
+  },
+  {
+    id: 'cow', name: 'Cow', emoji: '🐮',
+    loved: [
+      { emoji:'🌿', name:'Grass',  reaction:'bounce', speech:'Moo! Fresh grass! 🌿' },
+      { emoji:'🌾', name:'Hay',    reaction:'bounce', speech:'Moo! Perfect!' },
+      { emoji:'🌽', name:'Corn',   reaction:'bounce', speech:'Yum! Moo moo!' },
+      { emoji:'🍎', name:'Apple',  reaction:'bounce', speech:'A sweet treat! Moo! 🍎' },
+      { emoji:'🥕', name:'Carrot', reaction:'bounce', speech:'Crunch! Moo moo!' },
+    ],
+    disliked: [
+      { emoji:'🍕', name:'Pizza',  reaction:'shake',  speech:'Cows eat grass, not pizza!' },
+      { emoji:'🐟', name:'Fish',   reaction:'shake',  speech:'Eww! Not for cows! Moo!' },
+      { emoji:'🌶️', name:'Chili', reaction:'shake',  speech:'TOO HOT! 😤 Moo!' },
+      { emoji:'🧀', name:'Cheese', reaction:'spin',   speech:'Wait... is that ME?! 😱 Moo!' },
+    ]
+  },
+  {
+    id: 'chicken', name: 'Chicken', emoji: '🐔',
+    loved: [
+      { emoji:'🌽', name:'Corn',   reaction:'bounce', speech:'Bawk bawk! Yummy!' },
+      { emoji:'🪱', name:'Worm',   reaction:'bounce', speech:'A worm! Bawk bawk! 🪱' },
+      { emoji:'🌾', name:'Grain',  reaction:'bounce', speech:'Bawk! Pecking time!' },
+      { emoji:'🌱', name:'Seeds',  reaction:'bounce', speech:'Ooh seeds! Bawk bawk!' },
+      { emoji:'🍇', name:'Grapes', reaction:'spin',   speech:'Fancy snack! Bawk bawk!' },
+    ],
+    disliked: [
+      { emoji:'🍕', name:'Pizza',    reaction:'shake',  speech:'Chickens eat seeds! Bawk!' },
+      { emoji:'🌶️', name:'Chili',   reaction:'shake',  speech:'TOO SPICY! 🥵 Bawk bawk!' },
+      { emoji:'🍋', name:'Lemon',    reaction:'shake',  speech:'WAY too sour! Bawk!' },
+      { emoji:'🍫', name:'Chocolate',reaction:'shrink', speech:'Not for chickens! Bawk!' },
+    ]
+  },
+  {
+    id: 'sheep', name: 'Sheep', emoji: '🐑',
+    loved: [
+      { emoji:'🌿', name:'Grass',  reaction:'bounce', speech:'Baaaa! Fresh grass!' },
+      { emoji:'🌾', name:'Hay',    reaction:'bounce', speech:'Baa! Cozy hay!' },
+      { emoji:'🍎', name:'Apple',  reaction:'bounce', speech:'A sweet treat! Baa! 🍎' },
+      { emoji:'🍀', name:'Clover', reaction:'spin',   speech:'Lucky clover! Baa! 🍀' },
+      { emoji:'🥕', name:'Carrot', reaction:'bounce', speech:'Baa! Crunchy and yummy!' },
+    ],
+    disliked: [
+      { emoji:'🍕', name:'Pizza',  reaction:'shake',  speech:'Sheep eat grass! Baa!' },
+      { emoji:'🌶️', name:'Chili', reaction:'shake',  speech:'TOO SPICY! Baaa! 😖' },
+      { emoji:'🐟', name:'Fish',   reaction:'shake',  speech:'Eww! No way! Baa!' },
+      { emoji:'🧄', name:'Garlic', reaction:'shrink', speech:'Yuck! That stinks! Baa!' },
+    ]
+  }
+];
+
+const DWELL_MS      = 900;
+const ROUND_DELAY   = 1500;
+const GAME_DURATION = 60;
+const PICK_CIRC     = 314; // 2π×50
+const FOOD_CIRC     = 432; // approx ellipse perimeter rx=71 ry=61
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+
+let G = {
+  animal: null,
+  score: 0,
+  timer: GAME_DURATION,
+  timerInterval: null,
+  feedCount: 0,
+  correctCount: 0,
+  dwellRAF: null,
+  roundTimeout: null,
+  speechTimeout: null,
+  gameRunning: false,
+};
+
+// ── AUDIO ─────────────────────────────────────────────────────────────────────
+
+let AudioCtx = null;
+function getAudio() {
+  if (!AudioCtx) AudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return AudioCtx;
+}
+
+function playYum() {
+  try {
+    const a = getAudio();
+    const osc = a.createOscillator(), g = a.createGain();
+    osc.connect(g); g.connect(a.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, a.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(660, a.currentTime + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(880, a.currentTime + 0.28);
+    g.gain.setValueAtTime(0.35, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.45);
+    osc.start(); osc.stop(a.currentTime + 0.45);
+  } catch(e) {}
+}
+
+function playEww() {
+  try {
+    const a = getAudio();
+    const osc = a.createOscillator(), g = a.createGain();
+    osc.connect(g); g.connect(a.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(300, a.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(160, a.currentTime + 0.3);
+    g.gain.setValueAtTime(0.22, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.4);
+    osc.start(); osc.stop(a.currentTime + 0.4);
+  } catch(e) {}
+}
+
+function playFunny() {
+  try {
+    const a = getAudio();
+    [300, 420, 250, 520].forEach((freq, i) => {
+      const osc = a.createOscillator(), g = a.createGain();
+      osc.connect(g); g.connect(a.destination);
+      osc.type = 'triangle';
+      const t = a.currentTime + i * 0.07;
+      osc.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.18, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      osc.start(t); osc.stop(t + 0.1);
+    });
+  } catch(e) {}
+}
+
+// ── PICK SCREEN ───────────────────────────────────────────────────────────────
+
+function buildPickScreen() {
+  const grid = document.getElementById('animalGrid');
+  grid.innerHTML = '';
+  ANIMALS.forEach(animal => {
+    const btn = document.createElement('div');
+    btn.className = 'animal-pick-btn';
+    btn.innerHTML = `
+      <svg class="pick-ring" viewBox="0 0 110 110">
+        <circle cx="55" cy="55" r="50" id="pRing_${animal.id}"/>
+      </svg>
+      <span class="animal-pick-emoji">${animal.emoji}</span>
+      <span class="animal-pick-name">${animal.name}</span>
+    `;
+
+    let raf = null, t0 = null;
+    btn.addEventListener('pointerenter', () => {
+      getAudio();
+      t0 = performance.now();
+      const ring = document.getElementById(`pRing_${animal.id}`);
+      function tick(now) {
+        const frac = Math.min((now - t0) / DWELL_MS, 1);
+        ring.style.strokeDashoffset = PICK_CIRC * (1 - frac);
+        if (frac < 1) { raf = requestAnimationFrame(tick); }
+        else { startGame(animal); }
+      }
+      raf = requestAnimationFrame(tick);
+    });
+    btn.addEventListener('pointerleave', () => {
+      if (raf) cancelAnimationFrame(raf);
+      const ring = document.getElementById(`pRing_${animal.id}`);
+      if (ring) ring.style.strokeDashoffset = PICK_CIRC;
+    });
+
+    grid.appendChild(btn);
+  });
+}
+
+// ── GAME START ────────────────────────────────────────────────────────────────
+
+function startGame(animal) {
+  G.animal        = animal;
+  G.score         = 0;
+  G.timer         = GAME_DURATION;
+  G.feedCount     = 0;
+  G.correctCount  = 0;
+  G.gameRunning   = true;
+
+  document.getElementById('pickScreen').classList.add('hidden');
+  document.getElementById('endScreen').classList.add('hidden');
+  document.getElementById('gameScreen').classList.remove('hidden');
+  document.getElementById('hud').style.display = 'flex';
+
+  document.getElementById('animalEmoji').textContent  = animal.emoji;
+  document.getElementById('animalNameTag').textContent = animal.name;
+
+  addClouds();
+  updateHUD();
+  nextRound();
+
+  clearInterval(G.timerInterval);
+  G.timerInterval = setInterval(() => {
+    G.timer--;
+    const el = document.getElementById('hudTimer');
+    el.textContent = G.timer + 's';
+    el.classList.toggle('urgent', G.timer <= 10);
+    if (G.timer <= 0) endGame();
+  }, 1000);
+}
+
+function updateHUD() {
+  document.getElementById('hudScore').textContent = G.score;
+}
+
+// ── ROUND ─────────────────────────────────────────────────────────────────────
+
+function nextRound() {
+  if (!G.gameRunning) return;
+  stopDwell();
+
+  // 2 loved + 2 disliked, shuffled
+  const loved    = shuffle([...G.animal.loved]).slice(0, 2);
+  const disliked = shuffle([...G.animal.disliked]).slice(0, 2);
+  const foods    = shuffle([...loved, ...disliked]);
+
+  document.getElementById('leftFoods').innerHTML  = '';
+  document.getElementById('rightFoods').innerHTML = '';
+
+  foods.forEach((food, i) => {
+    const card = makeFoodCard(food);
+    document.getElementById(i < 2 ? 'leftFoods' : 'rightFoods').appendChild(card);
+  });
+
+  const sb = document.getElementById('speechBubble');
+  sb.classList.remove('show');
+  clearTimeout(G.speechTimeout);
+}
+
+function makeFoodCard(food) {
+  const card = document.createElement('div');
+  card.className = 'food-card';
+
+  // We draw a rect-ish ellipse that covers the card shape
+  // Card is 158×138 → ellipse cx=79 cy=69 rx=71 ry=61
+  // Approx perimeter: π*(3*(71+61) - sqrt((3*71+61)*(71+3*61))) ≈ 416
+  const circ = 416;
+  const rx = 71, ry = 61, cx = 79, cy = 69;
+
+  card.innerHTML = `
+    <svg class="food-ring-svg" viewBox="0 0 158 138" xmlns="http://www.w3.org/2000/svg">
+      <ellipse class="fring" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"
+        stroke="#FFD700" stroke-width="5" stroke-linecap="round"
+        fill="none"
+        style="transform-origin:${cx}px ${cy}px;transform:rotate(-90deg);
+               stroke-dasharray:${circ};stroke-dashoffset:${circ}"/>
+    </svg>
+    <span class="food-emoji">${food.emoji}</span>
+    <span class="food-name">${food.name}</span>
+  `;
+
+  let raf = null, t0 = null;
+  card.addEventListener('pointerenter', () => {
+    if (!G.gameRunning || card.classList.contains('used')) return;
+    t0 = performance.now();
+    const ring = card.querySelector('.fring');
+    function tick(now) {
+      if (!G.gameRunning) return;
+      const frac = Math.min((now - t0) / DWELL_MS, 1);
+      ring.style.strokeDashoffset = circ * (1 - frac);
+      if (frac < 1) { G.dwellRAF = raf = requestAnimationFrame(tick); }
+      else { feedAnimal(food, card); }
+    }
+    G.dwellRAF = raf = requestAnimationFrame(tick);
+  });
+  card.addEventListener('pointerleave', () => {
+    if (raf) cancelAnimationFrame(raf);
+    const ring = card.querySelector('.fring');
+    if (ring) ring.style.strokeDashoffset = circ;
+  });
+
+  return card;
+}
+
+function stopDwell() {
+  if (G.dwellRAF) { cancelAnimationFrame(G.dwellRAF); G.dwellRAF = null; }
+}
+
+// ── FEED ──────────────────────────────────────────────────────────────────────
+
+function feedAnimal(food, card) {
+  if (!G.gameRunning) return;
+  stopDwell();
+  card.classList.add('used');
+
+  G.feedCount++;
+  const isLoved = G.animal.loved.some(f => f.name === food.name);
+  if (isLoved) { G.correctCount++; G.score += 30; }
+  updateHUD();
+
+  // Speech bubble
+  const sb = document.getElementById('speechBubble');
+  sb.textContent = food.speech;
+  sb.classList.add('show');
+  clearTimeout(G.speechTimeout);
+  G.speechTimeout = setTimeout(() => sb.classList.remove('show'), 2000);
+
+  // Animal animation
+  const emojiEl = document.getElementById('animalEmoji');
+  emojiEl.classList.remove('react-bounce','react-shake','react-spin','react-shrink');
+  void emojiEl.offsetWidth;
+  emojiEl.classList.add('react-' + food.reaction);
+  emojiEl.addEventListener('animationend', () =>
+    emojiEl.classList.remove('react-bounce','react-shake','react-spin','react-shrink'),
+    { once: true });
+
+  // Sound
+  if (isLoved)               playYum();
+  else if (food.reaction === 'spin') playFunny();
+  else                       playEww();
+
+  // Score popup
+  if (isLoved) showScorePopup('+30 ⭐');
+
+  // Flash
+  if (isLoved) {
+    showFlash(food.emoji + ' 😋');
+  } else {
+    const faces = ['😱','🤢','😵','😬','🥵','😖'];
+    showFlash(faces[Math.floor(Math.random() * faces.length)]);
+  }
+
+  clearTimeout(G.roundTimeout);
+  G.roundTimeout = setTimeout(nextRound, ROUND_DELAY);
+}
+
+function showFlash(text) {
+  const el = document.getElementById('resultFlash');
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.textContent = text;
+  el.classList.add('show');
+  el.addEventListener('animationend', () => el.classList.remove('show'), { once: true });
+}
+
+function showScorePopup(text) {
+  const pop = document.createElement('div');
+  pop.className = 'score-popup';
+  pop.textContent = text;
+  pop.style.left = (window.innerWidth / 2 - 40) + 'px';
+  pop.style.top  = (window.innerHeight / 2 - 80) + 'px';
+  document.body.appendChild(pop);
+  void pop.offsetWidth;
+  pop.classList.add('show');
+  pop.addEventListener('animationend', () => pop.remove(), { once: true });
+}
+
+// ── END ───────────────────────────────────────────────────────────────────────
+
+function endGame() {
+  G.gameRunning = false;
+  clearInterval(G.timerInterval);
+  clearTimeout(G.roundTimeout);
+  clearTimeout(G.speechTimeout);
+  stopDwell();
+
+  document.getElementById('gameScreen').classList.add('hidden');
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('endScreen').classList.remove('hidden');
+  document.querySelectorAll('.cloud').forEach(c => c.remove());
+
+  document.getElementById('endScore').textContent = G.score;
+
+  const pct = G.feedCount > 0 ? Math.round(G.correctCount / G.feedCount * 100) : 0;
+  let emoji = '😊';
+  if (G.score >= 240) emoji = '🏆';
+  else if (G.score >= 120) emoji = '🌟';
+  document.getElementById('endEmoji').textContent = emoji;
+
+  document.getElementById('endBreakdown').innerHTML =
+    `Fed ${G.animal ? G.animal.name : ''} ${G.feedCount} time${G.feedCount !== 1 ? 's' : ''}<br>` +
+    `${G.correctCount} correct food${G.correctCount !== 1 ? 's' : ''} (${pct}%)`;
+
+  document.getElementById('playAgainBtn').onclick = () => {
+    document.getElementById('endScreen').classList.add('hidden');
+    document.getElementById('pickScreen').classList.remove('hidden');
+    buildPickScreen();
+  };
+}
+
+// ── CLOUDS ────────────────────────────────────────────────────────────────────
+
+function addClouds() {
+  document.querySelectorAll('.cloud').forEach(c => c.remove());
+  ['☁️','⛅','☁️'].forEach((emoji, i) => {
+    const c = document.createElement('div');
+    c.className = 'cloud';
+    c.textContent = emoji;
+    c.style.top              = (70 + i * 20) + 'px';
+    c.style.animationDuration = (13 + i * 6) + 's';
+    c.style.animationDelay   = (-i * 5 - 2) + 's';
+    c.style.fontSize         = (2.2 + i * 0.4) + 'em';
+    c.style.zIndex           = '1';
+    document.body.appendChild(c);
+  });
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+buildPickScreen();
+</script>
+</body>
+</html>

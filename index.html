@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎮 Kids Game Zone</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0; padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: bold;
+      font-style: normal;
+    }
+
+    body {
+      background: linear-gradient(160deg, #1a1040 0%, #2d1b6e 50%, #12102a 100%);
+      min-height: 100vh;
+      color: #fff;
+      padding: 24px 16px 48px;
+      overflow-x: hidden;
+    }
+
+    /* Starry background */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(circle, #fff 1px, transparent 1px),
+        radial-gradient(circle, #fff 1px, transparent 1px);
+      background-size: 120px 120px, 80px 80px;
+      background-position: 0 0, 40px 60px;
+      opacity: 0.08;
+      pointer-events: none; z-index: 0;
+    }
+
+    .wrap { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; }
+
+    /* ── HEADER ── */
+    .site-header { text-align: center; margin-bottom: 48px; }
+
+    .site-title {
+      font-size: clamp(2.4em, 7vw, 4em);
+      background: linear-gradient(90deg, #FFD700, #FF9A00, #FF4E6A, #B44FFF, #4D96FF, #00C49A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 3px 10px rgba(0,0,0,0.5));
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .site-subtitle {
+      font-size: clamp(1em, 3vw, 1.3em);
+      color: #cbb4ff;
+      letter-spacing: 1px;
+    }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      font-size: 1em;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 16px;
+      padding-left: 4px;
+    }
+
+    /* ── GAME GRID ── */
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+
+    /* ── GAME CARD ── */
+    .game-card {
+      background: rgba(255,255,255,0.07);
+      border: 2px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      padding: 32px 24px 28px;
+      text-align: center;
+      text-decoration: none;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s, border-color 0.15s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .game-card.active {
+      border-color: rgba(255,215,0,0.5);
+      background: rgba(255,255,255,0.1);
+    }
+
+    .game-card.active:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+      background: rgba(255,255,255,0.15);
+      border-color: #FFD700;
+    }
+
+    .game-card.active:active {
+      transform: translateY(-2px);
+    }
+
+    .game-card.coming-soon {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    /* Glow accent bar at top of active cards */
+    .game-card.active::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      border-radius: 24px 24px 0 0;
+    }
+
+    .card-emoji { font-size: 4em; line-height: 1; }
+
+    .card-title {
+      font-size: 1.5em;
+      color: #fff;
+      letter-spacing: 0.5px;
+    }
+
+    .card-desc {
+      font-size: 0.9em;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.5;
+    }
+
+    .card-badge {
+      font-size: 0.8em;
+      padding: 6px 16px;
+      border-radius: 50px;
+      margin-top: 4px;
+    }
+
+    .badge-play {
+      background: linear-gradient(145deg, #FFD700, #FF9A00);
+      color: #1a1040;
+    }
+
+    .badge-soon {
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.5);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    /* Individual card accent colors */
+    .card-wof::before   { background: linear-gradient(90deg, #FFD700, #FF9A00); }
+    .card-hang::before  { background: linear-gradient(90deg, #4ECDC4, #2ea89e); }
+    .card-scram::before { background: linear-gradient(90deg, #A29BFE, #6C5CE7); }
+    .card-mem::before   { background: linear-gradient(90deg, #FF8FA3, #e83055); }
+    .card-quiz::before  { background: linear-gradient(90deg, #6BCB77, #3a9e44); }
+    .card-word::before  { background: linear-gradient(90deg, #FF922B, #e06800); }
+
+    /* ── SUGGEST BOX ── */
+    .suggest-box {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      padding: 32px 28px;
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .suggest-box h3 {
+      font-size: 1.5em;
+      color: #FFD700;
+      margin-bottom: 10px;
+    }
+
+    .suggest-box p {
+      color: rgba(255,255,255,0.7);
+      font-size: 1em;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .suggest-box textarea {
+      width: 100%;
+      max-width: 520px;
+      height: 100px;
+      border-radius: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 1em;
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: bold;
+      padding: 14px 16px;
+      resize: none;
+      outline: none;
+      display: block;
+      margin: 0 auto 18px;
+      transition: border-color 0.2s;
+    }
+    .suggest-box textarea::placeholder { color: rgba(255,255,255,0.35); }
+    .suggest-box textarea:focus { border-color: #FFD700; }
+
+    .suggest-btn {
+      font-size: 1.1em;
+      padding: 14px 40px;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(145deg, #B44FFF, #7B2FFF);
+      color: #fff;
+      transition: transform 0.1s, box-shadow 0.1s;
+      box-shadow: 0 6px 24px rgba(140,60,255,0.4);
+    }
+    .suggest-btn:hover  { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(140,60,255,0.55); }
+    .suggest-btn:active { transform: translateY(0); }
+
+    .suggest-thanks {
+      display: none;
+      color: #6BCB77;
+      font-size: 1.1em;
+      margin-top: 14px;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      text-align: center;
+      margin-top: 48px;
+      color: rgba(255,255,255,0.3);
+      font-size: 0.85em;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="site-title">🎮 Kids Game Zone 🎮</div>
+    <div class="site-subtitle">Pick a game and start playing!</div>
+  </header>
+
+  <!-- GAMES -->
+  <div class="section-label">Games</div>
+  <div class="game-grid">
+
+    <!-- GONE FISHIN' — active -->
+    <a class="game-card active card-mem" href="fishing.html">
+      <div class="card-emoji">🎣</div>
+      <div class="card-title">Gone Fishin'!</div>
+      <div class="card-desc">Hover over fish to catch them before they swim away. Golden fish are worth the most!</div>
+      <div class="card-badge badge-play">▶ Play Now</div>
+    </a>
+
+    <!-- FEED THE BUDDY — active -->
+    <a class="game-card active card-quiz" href="feed-the-animal.html">
+      <div class="card-emoji">🐶</div>
+      <div class="card-title">Feed the Buddy!</div>
+      <div class="card-desc">Hover over food and toss it to your hungry pup! Keep that tail wagging!</div>
+      <div class="card-badge badge-play">▶ Play Now</div>
+    </a>
+
+    <!-- BONK-A-BLOOP — active -->
+    <a class="game-card active card-scram" href="whack-a-mole.html">
+      <div class="card-emoji">🔨</div>
+      <div class="card-title">Bonk-a-Bloop!</div>
+      <div class="card-desc">Hover over the silly Bloops for 1 second to bonk them before they hide!</div>
+      <div class="card-badge badge-play">▶ Play Now</div>
+    </a>
+
+    <!-- BUBBLE POP — active -->
+    <a class="game-card active card-hang" href="bubble-pop.html">
+      <div class="card-emoji">🫧</div>
+      <div class="card-title">Bubble Pop!</div>
+      <div class="card-desc">Click the bubbles before they float away. Miss too many and it's game over!</div>
+      <div class="card-badge badge-play">▶ Play Now</div>
+    </a>
+
+    <!-- WHEEL OF FORTUNE — active -->
+    <a class="game-card active card-wof" href="wheel-of-fortune.html">
+      <div class="card-emoji">🎡</div>
+      <div class="card-title">Wheel of Fun</div>
+      <div class="card-desc">Spin the wheel, guess the letters, and solve the puzzle!</div>
+      <div class="card-badge badge-play">▶ Play Now</div>
+    </a>
+
+  </div>
+
+  <!-- SUGGEST A GAME -->
+  <div class="suggest-box">
+    <h3>💡 Want a New Game?</h3>
+    <p>Got an idea for a game you'd love to see here? Tell us — we'd love to hear it!</p>
+    <textarea id="suggestionText" placeholder="What game would you like to play?"></textarea>
+    <button class="suggest-btn" onclick="sendSuggestion()">Send Your Idea 🚀</button>
+    <div class="suggest-thanks" id="suggestThanks">🎉 Thanks for your idea! We'll check it out.</div>
+  </div>
+
+  <div class="footer">Kids Game Zone &nbsp;·&nbsp; Built with love ❤️</div>
+
+  <script>
+    function sendSuggestion() {
+      const msg = document.getElementById('suggestionText').value.trim();
+      if (!msg) {
+        document.getElementById('suggestionText').focus();
+        return;
+      }
+      const e = ['lorenflds', 'gmail.com'].join('@');
+      const subject = encodeURIComponent('Kids Game Zone — Game Idea!');
+      const body = encodeURIComponent('Hi! Here is my game idea:\n\n' + msg);
+      window.location.href = 'mailto:' + e + '?subject=' + subject + '&body=' + body;
+      document.getElementById('suggestThanks').style.display = 'block';
+      document.getElementById('suggestionText').value = '';
+    }
+  </script>
+
+</div>
+</body>
+</html>

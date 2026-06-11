@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎡 Wheel of Fun!</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0; padding: 0;
+      font-style: normal;
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: bold;
+    }
+
+    :root {
+      --gold: #FFD700;
+      --green: #00C49A;
+      --red: #FF4E6A;
+      --dark: #12102A;
+    }
+
+    body {
+      background: linear-gradient(160deg, #1a1040 0%, #2d1b6e 50%, #12102a 100%);
+      min-height: 100vh;
+      color: #fff;
+      padding: 16px;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(circle, #fff 1px, transparent 1px),
+        radial-gradient(circle, #fff 1px, transparent 1px);
+      background-size: 120px 120px, 80px 80px;
+      background-position: 0 0, 40px 60px;
+      opacity: 0.08;
+      pointer-events: none; z-index: 0;
+    }
+
+    .game-wrap { position: relative; z-index: 1; max-width: 980px; margin: 0 auto; }
+
+    /* ── BACK TO HOME ── */
+    .home-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 50px;
+      padding: 8px 20px;
+      color: #cbb4ff;
+      text-decoration: none;
+      font-size: 0.95em;
+      margin-bottom: 14px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .home-btn:hover {
+      background: rgba(255,255,255,0.18);
+      transform: translateX(-3px);
+    }
+
+    h1 {
+      font-size: clamp(2em, 6vw, 3em);
+      text-align: center;
+      background: linear-gradient(90deg, #FFD700, #FF9A00, #FF4E6A, #B44FFF, #4D96FF, #00C49A);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+      margin-bottom: 14px;
+      letter-spacing: 2px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 18px;
+      padding: 12px 22px;
+      margin-bottom: 14px;
+      gap: 10px; flex-wrap: wrap;
+    }
+    .top-bar-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .top-bar-label { font-size: 0.72em; opacity: 0.65; text-transform: uppercase; letter-spacing: 1px; }
+    .top-bar-value { font-size: 1.5em; }
+    #moneyDisplay  { color: var(--gold); text-shadow: 0 0 12px rgba(255,215,0,0.6); }
+    #categoryDisplay { font-size: 1.05em; color: #cbb4ff; }
+    #puzzleNum     { color: #9FFFCB; }
+
+    .message-box {
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 14px;
+      padding: 12px 20px;
+      text-align: center;
+      font-size: 1.15em;
+      min-height: 52px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .message-box.correct  { background: rgba(0,196,154,0.25); border-color: var(--green); }
+    .message-box.wrong    { background: rgba(255,78,106,0.25); border-color: var(--red); }
+    .message-box.bankrupt { background: rgba(255,30,30,0.4);   border-color: #ff2222; }
+    .message-box.buyvowel { background: rgba(255,150,0,0.2);   border-color: #FF9A00; }
+
+    .main-layout {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .wheel-area {
+      display: flex; flex-direction: column; align-items: center;
+      flex: 0 0 auto;
+    }
+    .wheel-container { position: relative; display: inline-block; }
+    .wheel-pointer {
+      position: absolute;
+      top: -20px; left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-top: 44px solid var(--gold);
+      filter: drop-shadow(0 3px 8px rgba(0,0,0,0.7));
+      z-index: 5;
+    }
+    #wheelCanvas {
+      display: block;
+      border-radius: 50%;
+      box-shadow: 0 0 50px rgba(123,47,190,0.7), 0 0 100px rgba(77,150,255,0.3);
+    }
+
+    .spin-btn {
+      margin-top: 18px;
+      font-size: 1.8em;
+      padding: 14px 56px;
+      background: linear-gradient(145deg, #FFD700, #FF9A00);
+      border: none; border-radius: 50px;
+      cursor: pointer; color: #1a1040;
+      box-shadow: 0 7px 0 #c47a00, 0 10px 24px rgba(0,0,0,0.5);
+      transition: transform 0.1s, box-shadow 0.1s;
+      letter-spacing: 1px;
+    }
+    .spin-btn:hover:not(:disabled) {
+      transform: translateY(-4px);
+      box-shadow: 0 11px 0 #c47a00, 0 14px 32px rgba(0,0,0,0.5);
+    }
+    .spin-btn:active:not(:disabled) {
+      transform: translateY(4px);
+      box-shadow: 0 3px 0 #c47a00, 0 5px 10px rgba(0,0,0,0.4);
+    }
+    .spin-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .puzzle-section { flex: 1 1 300px; }
+    .puzzle-board {
+      display: flex; flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 10px; padding: 18px;
+      background: rgba(0,0,0,0.35);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      margin-bottom: 14px;
+      min-height: 110px;
+    }
+    .word-group { display: flex; gap: 5px; }
+    .letter-tile {
+      width: 44px; height: 54px;
+      background: #0e0c2a;
+      border: 2px solid #3a3570;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5em;
+      color: var(--gold);
+      text-shadow: 0 0 8px rgba(255,215,0,0.5);
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .letter-tile.blank { background: #1a1750; border-color: #4a45a0; }
+    .letter-tile.revealed {
+      background: #1a4a2e; border-color: #3ddc84;
+      animation:
+        tilePop   0.35s cubic-bezier(0.175,0.885,0.32,1.275),
+        tileFlash 0.75s ease forwards;
+    }
+    @keyframes tilePop {
+      0%   { transform: scale(0.6) rotateY(90deg); opacity: 0; }
+      60%  { transform: scale(1.15) rotateY(0); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes tileFlash {
+      0%   { background: #1a4a2e; border-color: #3ddc84; box-shadow: none; }
+      25%  { background: #FFD700; border-color: #fff;    box-shadow: 0 0 18px #FFD700, 0 0 36px rgba(255,215,0,0.6); }
+      50%  { background: #ffffff; border-color: #fff;    box-shadow: 0 0 24px #fff,    0 0 48px rgba(255,255,255,0.5); }
+      75%  { background: #FFD700; border-color: #3ddc84; box-shadow: 0 0 10px #FFD700; }
+      100% { background: #1a4a2e; border-color: #3ddc84; box-shadow: none; }
+    }
+
+    .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+    .action-btn {
+      font-size: 1.05em;
+      padding: 13px 22px;
+      border: none; border-radius: 14px;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+      flex: 1 1 130px; text-align: center;
+    }
+    .action-btn:hover:not(:disabled) { transform: translateY(-3px); }
+    .action-btn:active:not(:disabled) { transform: translateY(2px); }
+    .action-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .buy-vowel-btn {
+      background: linear-gradient(145deg, #FF6B6B, #ee3030);
+      color: white;
+      box-shadow: 0 5px 0 #a01818, 0 7px 15px rgba(0,0,0,0.35);
+    }
+    .buy-vowel-btn:hover:not(:disabled) { box-shadow: 0 8px 0 #a01818, 0 10px 22px rgba(0,0,0,0.35); }
+
+    .cancel-vowel-btn {
+      background: linear-gradient(145deg, #888, #555);
+      color: white;
+      box-shadow: 0 5px 0 #333, 0 7px 15px rgba(0,0,0,0.35);
+      display: none;
+    }
+    .cancel-vowel-btn.visible { display: block; }
+    .cancel-vowel-btn:hover { box-shadow: 0 8px 0 #333, 0 10px 22px rgba(0,0,0,0.35); }
+
+    .solve-btn {
+      background: linear-gradient(145deg, #A29BFE, #6C5CE7);
+      color: white;
+      box-shadow: 0 5px 0 #3d33a0, 0 7px 15px rgba(0,0,0,0.35);
+    }
+    .solve-btn:hover:not(:disabled) { box-shadow: 0 8px 0 #3d33a0, 0 10px 22px rgba(0,0,0,0.35); }
+
+    .keyboard-section {
+      background: rgba(0,0,0,0.35);
+      border: 2px solid rgba(255,255,255,0.15);
+      border-radius: 22px;
+      padding: 18px 16px 22px;
+    }
+    .keyboard-label {
+      text-align: center;
+      font-size: 1.05em;
+      color: #cbb4ff;
+      letter-spacing: 0.5px;
+      margin-bottom: 14px;
+    }
+    .kb-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 8px; }
+
+    .key-btn {
+      width: 64px; height: 64px;
+      border: none; border-radius: 14px;
+      font-size: 1.55em;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+      touch-action: manipulation;
+    }
+    .key-btn.consonant {
+      background: linear-gradient(145deg, #4ECDC4, #2ea89e);
+      color: white;
+      box-shadow: 0 6px 0 #1a7a73, 0 8px 16px rgba(0,0,0,0.4);
+    }
+    .key-btn.vowel {
+      background: linear-gradient(145deg, #FF8FA3, #e83055);
+      color: white;
+      box-shadow: 0 6px 0 #a01840, 0 8px 16px rgba(0,0,0,0.4);
+    }
+    .key-btn:hover:not(:disabled):not(.used-correct):not(.used-wrong) {
+      transform: translateY(-5px);
+      box-shadow: 0 11px 0 rgba(0,0,0,0.4), 0 14px 28px rgba(0,0,0,0.3);
+    }
+    .key-btn:active:not(:disabled):not(.used-correct):not(.used-wrong) {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+    }
+    .key-btn.vowel.vowel-dimmed {
+      background: linear-gradient(145deg, rgba(255,143,163,0.22), rgba(232,48,85,0.22)) !important;
+      color: rgba(255,180,200,0.45) !important;
+      box-shadow: none !important;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    .key-btn.consonant.consonant-dimmed {
+      background: linear-gradient(145deg, rgba(78,205,196,0.2), rgba(46,168,158,0.2)) !important;
+      color: rgba(100,220,210,0.4) !important;
+      box-shadow: none !important;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    .key-btn.used-correct {
+      background: linear-gradient(145deg, #1a5c34, #0d3d20) !important;
+      color: #3ddc84 !important;
+      box-shadow: none !important; cursor: default !important;
+      font-size: 1.3em;
+    }
+    .key-btn.used-wrong {
+      background: linear-gradient(145deg, #3a1a1a, #280d0d) !important;
+      color: #774040 !important;
+      box-shadow: none !important; cursor: default !important;
+    }
+    .key-btn:disabled:not(.vowel-dimmed):not(.consonant-dimmed):not(.used-correct):not(.used-wrong) {
+      background: #222040 !important;
+      color: #444066 !important;
+      box-shadow: none !important;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    @media (max-width: 700px) {
+      .key-btn { width: 50px; height: 54px; font-size: 1.3em; border-radius: 10px; }
+      .kb-row { gap: 5px; margin-bottom: 5px; }
+    }
+    @media (max-width: 430px) {
+      .key-btn { width: 38px; height: 44px; font-size: 1.1em; border-radius: 8px; }
+      .kb-row { gap: 3px; margin-bottom: 4px; }
+    }
+
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .win-box {
+      background: linear-gradient(135deg, #1a1040 0%, #2d1b6e 100%);
+      border: 3px solid var(--gold); border-radius: 28px;
+      padding: 40px 50px; text-align: center;
+      box-shadow: 0 0 60px rgba(255,215,0,0.5);
+      animation: winPop 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+      max-width: 500px; width: 90%;
+    }
+    @keyframes winPop {
+      0%  { transform: scale(0); opacity: 0; }
+      80% { transform: scale(1.08); }
+      100%{ transform: scale(1);   opacity: 1; }
+    }
+    .win-emoji { font-size: 4em; margin-bottom: 8px; }
+    .win-box h2 {
+      font-size: 2.8em;
+      background: linear-gradient(90deg, #FFD700, #FF9A00);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 10px;
+    }
+    .win-phrase { font-size: 1.35em; color: #cbb4ff; margin: 8px 0 4px; }
+    .win-money  { font-size: 1.6em; color: var(--gold); margin-bottom: 20px; }
+    .next-btn {
+      font-size: 1.4em; padding: 14px 40px;
+      background: linear-gradient(145deg, #FFD700, #FF9A00);
+      color: #1a1040; border: none; border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #c47a00, 0 8px 20px rgba(0,0,0,0.4);
+      transition: transform 0.1s;
+    }
+    .next-btn:hover { transform: translateY(-3px); }
+
+    .solve-box {
+      background: #1e1b40; border: 2px solid #6C5CE7;
+      border-radius: 22px; padding: 32px;
+      width: 420px; max-width: 92vw;
+      box-shadow: 0 0 40px rgba(108,92,231,0.5);
+      animation: winPop 0.35s cubic-bezier(0.175,0.885,0.32,1.275);
+    }
+    .solve-box h3 { font-size: 1.8em; color: #A29BFE; margin-bottom: 10px; }
+    .solve-box p  { color: #aaa; margin-bottom: 14px; }
+    .solve-input {
+      width: 100%; padding: 12px 16px;
+      font-size: 1.2em;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid #6C5CE7; border-radius: 12px;
+      color: white; margin-bottom: 14px;
+      text-transform: uppercase; letter-spacing: 2px;
+    }
+    .solve-input:focus { outline: none; border-color: #A29BFE; box-shadow: 0 0 0 3px rgba(162,155,254,0.3); }
+    .solve-buttons { display: flex; gap: 10px; }
+    .solve-submit {
+      font-size: 1.2em; padding: 12px 28px; flex: 1;
+      background: linear-gradient(145deg, #A29BFE, #6C5CE7);
+      color: white; border: none; border-radius: 12px; cursor: pointer;
+      box-shadow: 0 4px 0 #3d33a0;
+    }
+    .solve-cancel {
+      font-size: 1.2em; padding: 12px 22px;
+      background: rgba(255,255,255,0.1); color: #aaa;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px; cursor: pointer;
+    }
+    .solve-error {
+      color: #FF6B6B; margin-top: 10px; display: none;
+      animation: shake 0.4s ease;
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25%     { transform: translateX(-8px); }
+      75%     { transform: translateX(8px); }
+    }
+
+    .confetti-piece {
+      position: fixed; top: -20px;
+      animation: confettiFall linear forwards;
+      pointer-events: none; z-index: 300;
+    }
+    @keyframes confettiFall {
+      0%   { opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+
+    @media (max-width: 640px) {
+      .main-layout { flex-direction: column; align-items: center; }
+      #wheelCanvas { width: 300px !important; height: 300px !important; }
+      .letter-tile { width: 34px; height: 44px; font-size: 1.2em; }
+      .spin-btn { font-size: 1.4em; padding: 12px 36px; }
+    }
+  </style>
+</head>
+<body>
+<div class="game-wrap">
+
+  <a class="home-btn" href="index.html">← Back to All Games</a>
+
+  <h1>🎡 WHEEL OF FUN! 🎡</h1>
+
+  <div class="top-bar">
+    <div class="top-bar-item">
+      <span class="top-bar-label">Category</span>
+      <span class="top-bar-value" id="categoryDisplay">—</span>
+    </div>
+    <div class="top-bar-item">
+      <span class="top-bar-label">Your Money</span>
+      <span class="top-bar-value" id="moneyDisplay">$0</span>
+    </div>
+    <div class="top-bar-item">
+      <span class="top-bar-label">Puzzle</span>
+      <span class="top-bar-value" id="puzzleNum">—</span>
+    </div>
+  </div>
+
+  <div class="message-box" id="messageBox">Spin the wheel to start! 🎯</div>
+
+  <div class="main-layout">
+    <div class="wheel-area">
+      <div class="wheel-container">
+        <div class="wheel-pointer"></div>
+        <canvas id="wheelCanvas" width="420" height="420"></canvas>
+      </div>
+      <button class="spin-btn" id="spinBtn">🎡 SPIN THE WHEEL!</button>
+    </div>
+
+    <div class="puzzle-section">
+      <div class="puzzle-board" id="puzzleBoard"></div>
+      <div class="action-buttons">
+        <button class="action-btn buy-vowel-btn"    id="buyVowelBtn">🔤 Buy a Vowel ($250)</button>
+        <button class="action-btn cancel-vowel-btn" id="cancelVowelBtn">❌ Go Back</button>
+        <button class="action-btn solve-btn"        id="solveBtn">✏️ Solve It!</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="keyboard-section">
+    <div class="keyboard-label" id="kbLabel">🔡 Pick a Letter — Teal = Consonant  |  Pink = Vowel</div>
+    <div id="keyboard"></div>
+  </div>
+</div>
+
+<!-- WIN OVERLAY -->
+<div class="modal-overlay" id="winOverlay">
+  <div class="win-box">
+    <div class="win-emoji">🎉</div>
+    <h2>You Got It!</h2>
+    <div class="win-phrase" id="winPhrase"></div>
+    <div class="win-money"  id="winMoney"></div>
+    <button class="next-btn" id="nextBtn">▶ Next Puzzle!</button>
+  </div>
+</div>
+
+<!-- SOLVE MODAL -->
+<div class="modal-overlay" id="solveModal">
+  <div class="solve-box">
+    <h3>✏️ Solve the Puzzle!</h3>
+    <p>Type your answer and press Check!</p>
+    <input class="solve-input" id="solveInput" type="text" placeholder="Your answer here..." autocomplete="off" />
+    <div class="solve-buttons">
+      <button class="solve-submit" id="solveSubmitBtn">✅ Check!</button>
+      <button class="solve-cancel" id="solveCancelBtn">Cancel</button>
+    </div>
+    <div class="solve-error" id="solveError">😅 Not quite — keep trying!</div>
+  </div>
+</div>
+
+<script>
+const PUZZLES = [
+  { phrase: "HAPPY CAT",               category: "🐱 Animals" },
+  { phrase: "BIG FLUFFY DOG",          category: "🐶 Animals" },
+  { phrase: "JUMPING FROG",            category: "🐸 Animals" },
+  { phrase: "COLORFUL BUTTERFLY",      category: "🦋 Animals" },
+  { phrase: "ROARING LION",            category: "🦁 Animals" },
+  { phrase: "CUTE LITTLE BUNNY",       category: "🐰 Animals" },
+  { phrase: "STRIPED ZEBRA",           category: "🦓 Animals" },
+  { phrase: "BABY ELEPHANT",           category: "🐘 Animals" },
+  { phrase: "PLAYFUL DOLPHIN",         category: "🐬 Animals" },
+  { phrase: "TINY TURTLE",             category: "🐢 Animals" },
+  { phrase: "SPOTTED GIRAFFE",         category: "🦒 Animals" },
+  { phrase: "PINK FLAMINGO",           category: "🦩 Animals" },
+  { phrase: "GROWLING BEAR",           category: "🐻 Animals" },
+  { phrase: "SWIMMING SHARK",          category: "🦈 Animals" },
+  { phrase: "SOARING EAGLE",           category: "🦅 Animals" },
+  { phrase: "WOOLLY SHEEP",            category: "🐑 Animals" },
+  { phrase: "SNEAKY FOX",              category: "🦊 Animals" },
+  { phrase: "BABY PENGUIN",            category: "🐧 Animals" },
+  { phrase: "GIANT OCTOPUS",           category: "🐙 Animals" },
+  { phrase: "GOLDEN HAMSTER",          category: "🐹 Animals" },
+  { phrase: "WISE OLD OWL",            category: "🦉 Animals" },
+  { phrase: "SPEEDY CHEETAH",          category: "🐆 Animals" },
+  { phrase: "FUNNY MONKEY",            category: "🐒 Animals" },
+  { phrase: "SLITHERING SNAKE",        category: "🐍 Animals" },
+  { phrase: "LEAPING KANGAROO",        category: "🦘 Animals" },
+  { phrase: "FLUFFY KITTEN",           category: "🐱 Animals" },
+  { phrase: "SPOTTED DALMATIAN",       category: "🐶 Animals" },
+  { phrase: "GIANT PANDA",             category: "🐼 Animals" },
+  { phrase: "BLUE WHALE",              category: "🐋 Animals" },
+  { phrase: "TINY LADYBUG",            category: "🐞 Animals" },
+  { phrase: "HOPPING RABBIT",          category: "🐇 Animals" },
+  { phrase: "FRIENDLY GORILLA",        category: "🦍 Animals" },
+  { phrase: "ORANGE CRAB",             category: "🦀 Animals" },
+  { phrase: "BUZZING BEE",             category: "🐝 Animals" },
+  { phrase: "CUTE HEDGEHOG",           category: "🦔 Animals" },
+  { phrase: "PRETTY PARROT",           category: "🦜 Animals" },
+  { phrase: "WILD HORSE",              category: "🐎 Animals" },
+  { phrase: "BABY CHICK",              category: "🐥 Animals" },
+  { phrase: "STRIPED TIGER",           category: "🐯 Animals" },
+  { phrase: "RAINBOW FISH",            category: "🐠 Animals" },
+  { phrase: "PIZZA PARTY",             category: "🍕 Food" },
+  { phrase: "YUMMY ICE CREAM",         category: "🍦 Food" },
+  { phrase: "RAINBOW LOLLIPOP",        category: "🍭 Food" },
+  { phrase: "CHOCOLATE CAKE",          category: "🎂 Food" },
+  { phrase: "STRAWBERRY SMOOTHIE",     category: "🍓 Food" },
+  { phrase: "BLUEBERRY PANCAKES",      category: "🫐 Food" },
+  { phrase: "CRUNCHY TACOS",           category: "🌮 Food" },
+  { phrase: "PEANUT BUTTER SANDWICH",  category: "🥜 Food" },
+  { phrase: "GRILLED CHEESE SANDWICH", category: "🧀 Food" },
+  { phrase: "CREAMY MAC AND CHEESE",   category: "🍝 Food" },
+  { phrase: "JUICY WATERMELON",        category: "🍉 Food" },
+  { phrase: "HOT COCOA MUG",           category: "☕ Food" },
+  { phrase: "BANANA SPLIT",            category: "🍌 Food" },
+  { phrase: "COTTON CANDY",            category: "🍬 Food" },
+  { phrase: "VANILLA PUDDING",         category: "🍮 Food" },
+  { phrase: "BUTTERY POPCORN",         category: "🍿 Food" },
+  { phrase: "FRESH ORANGE JUICE",      category: "🍊 Food" },
+  { phrase: "TRIPLE SCOOP SUNDAE",     category: "🍨 Food" },
+  { phrase: "BIRTHDAY CUPCAKE",        category: "🧁 Food" },
+  { phrase: "CRISPY FRENCH FRIES",     category: "🍟 Food" },
+  { phrase: "CHEESY NACHOS",           category: "🌮 Food" },
+  { phrase: "WARM CINNAMON ROLL",      category: "🥐 Food" },
+  { phrase: "CHERRY CHEESECAKE",       category: "🍰 Food" },
+  { phrase: "PUMPKIN PIE",             category: "🥧 Food" },
+  { phrase: "GUMMY BEARS",             category: "🐻 Food" },
+  { phrase: "SPAGHETTI AND MEATBALLS", category: "🍝 Food" },
+  { phrase: "GOLDEN CORN ON THE COB",  category: "🌽 Food" },
+  { phrase: "FRESH LEMONADE",          category: "🍋 Food" },
+  { phrase: "COCONUT MILKSHAKE",       category: "🥥 Food" },
+  { phrase: "PEACH COBBLER",           category: "🍑 Food" },
+  { phrase: "MINI DONUTS",             category: "🍩 Food" },
+  { phrase: "HONEY ON TOAST",          category: "🍯 Food" },
+  { phrase: "SWEET POTATO PIE",        category: "🥧 Food" },
+  { phrase: "CRUNCHY APPLE PIE",       category: "🍎 Food" },
+  { phrase: "FRUITY GELATIN",          category: "🍇 Food" },
+  { phrase: "THE PLAYGROUND",          category: "🛝 Places" },
+  { phrase: "SUNNY BEACH",             category: "🏖 Places" },
+  { phrase: "MAGIC FOREST",            category: "🌲 Places" },
+  { phrase: "OUTER SPACE",             category: "🚀 Places" },
+  { phrase: "UNDER THE SEA",           category: "🌊 Places" },
+  { phrase: "THE LIBRARY",             category: "📚 Places" },
+  { phrase: "SNOWY MOUNTAIN",          category: "🏔 Places" },
+  { phrase: "THE ZOO",                 category: "🦁 Places" },
+  { phrase: "AMUSEMENT PARK",          category: "🎡 Places" },
+  { phrase: "THE SWIMMING POOL",       category: "🏊 Places" },
+  { phrase: "BOWLING ALLEY",           category: "🎳 Places" },
+  { phrase: "MOVIE THEATER",           category: "🎬 Places" },
+  { phrase: "PETTING FARM",            category: "🐄 Places" },
+  { phrase: "SCIENCE MUSEUM",          category: "🔬 Places" },
+  { phrase: "THE SKATING RINK",        category: "⛸ Places" },
+  { phrase: "ENCHANTED CASTLE",        category: "🏰 Places" },
+  { phrase: "TREEHOUSE HIDEOUT",       category: "🌳 Places" },
+  { phrase: "SUNNY MEADOW",            category: "🌻 Places" },
+  { phrase: "UNDERGROUND CAVE",        category: "🕳 Places" },
+  { phrase: "TROPICAL ISLAND",         category: "🏝 Places" },
+  { phrase: "NORTH POLE",              category: "🧊 Places" },
+  { phrase: "GRAND CANYON",            category: "🏜 Places" },
+  { phrase: "DEEP OCEAN FLOOR",        category: "🌊 Places" },
+  { phrase: "DESERT OASIS",            category: "🌴 Places" },
+  { phrase: "COUNTRY FARMHOUSE",       category: "🏡 Places" },
+  { phrase: "THE FIRE STATION",        category: "🚒 Places" },
+  { phrase: "CITY SKYSCRAPER",         category: "🏙 Places" },
+  { phrase: "THE ART MUSEUM",          category: "🖼 Places" },
+  { phrase: "BOTANICAL GARDEN",        category: "🌸 Places" },
+  { phrase: "MOUNTAIN WATERFALL",      category: "💧 Places" },
+  { phrase: "HAUNTED MANSION",         category: "👻 Places" },
+  { phrase: "LITTLE TOY SHOP",         category: "🧸 Places" },
+  { phrase: "THE BAKERY",              category: "🥖 Places" },
+  { phrase: "LITTLE TOWN SQUARE",      category: "🏘 Places" },
+  { phrase: "AMAZON RAINFOREST",       category: "🌿 Places" },
+  { phrase: "HAPPY BIRTHDAY",          category: "🎉 Phrases" },
+  { phrase: "HAVE A GREAT DAY",        category: "☀️ Phrases" },
+  { phrase: "YOU ARE A STAR",          category: "⭐ Phrases" },
+  { phrase: "PRACTICE MAKES PERFECT",  category: "📚 Phrases" },
+  { phrase: "BE KIND TO OTHERS",       category: "💛 Phrases" },
+  { phrase: "NEVER GIVE UP",           category: "💪 Phrases" },
+  { phrase: "FOLLOW YOUR DREAMS",      category: "🌙 Phrases" },
+  { phrase: "READING IS FUN",          category: "📖 Phrases" },
+  { phrase: "BELIEVE IN YOURSELF",     category: "🌟 Phrases" },
+  { phrase: "KEEP UP THE GOOD WORK",   category: "👏 Phrases" },
+  { phrase: "YOU CAN DO IT",           category: "💪 Phrases" },
+  { phrase: "DREAM BIG",               category: "🌠 Phrases" },
+  { phrase: "SHARE AND CARE",          category: "💛 Phrases" },
+  { phrase: "GOOD THINGS TAKE TIME",   category: "⏳ Phrases" },
+  { phrase: "KINDNESS IS FREE",        category: "💛 Phrases" },
+  { phrase: "TODAY IS A GREAT DAY",    category: "☀️ Phrases" },
+  { phrase: "HARD WORK PAYS OFF",      category: "💪 Phrases" },
+  { phrase: "ONE STEP AT A TIME",      category: "👣 Phrases" },
+  { phrase: "STAY POSITIVE AND SMILE", category: "😊 Phrases" },
+  { phrase: "GOOD MORNING SUNSHINE",   category: "☀️ Phrases" },
+  { phrase: "HAVE FUN AND BE SAFE",    category: "🎉 Phrases" },
+  { phrase: "ALWAYS DO YOUR BEST",     category: "⭐ Phrases" },
+  { phrase: "REACH FOR THE STARS",     category: "🌠 Phrases" },
+  { phrase: "WE ARE ALL SPECIAL",      category: "💛 Phrases" },
+  { phrase: "TOGETHER WE CAN DO IT",   category: "🤝 Phrases" },
+  { phrase: "LEARN SOMETHING NEW TODAY",category:"📚 Phrases" },
+  { phrase: "BE BRAVE AND BOLD",       category: "🦁 Phrases" },
+  { phrase: "KEEP ON TRYING",          category: "💪 Phrases" },
+  { phrase: "FRIENDS ARE FOREVER",     category: "💛 Phrases" },
+  { phrase: "DO YOUR BEST ALWAYS",     category: "⭐ Phrases" },
+  { phrase: "THINK HAPPY THOUGHTS",    category: "💭 Phrases" },
+  { phrase: "BE A GOOD FRIEND",        category: "🤝 Phrases" },
+  { phrase: "GREAT THINGS TAKE TIME",  category: "⏳ Phrases" },
+  { phrase: "EVERY DAY IS A NEW CHANCE",category:"🌅 Phrases" },
+  { phrase: "MAKE SOMEONE SMILE TODAY",category: "😊 Phrases" },
+  { phrase: "LAUGHTER IS MEDICINE",    category: "😄 Phrases" },
+  { phrase: "THE MORE YOU READ",       category: "📖 Phrases" },
+  { phrase: "STAND TALL AND BE PROUD", category: "🌟 Phrases" },
+  { phrase: "A SMILE IS CONTAGIOUS",   category: "😊 Phrases" },
+  { phrase: "THE WORLD IS YOUR STAGE", category: "🎭 Phrases" },
+  { phrase: "SHOOTING STAR",           category: "⭐ Things" },
+  { phrase: "RAINBOW AFTER RAIN",      category: "🌈 Things" },
+  { phrase: "COLORFUL KITE",           category: "🪁 Things" },
+  { phrase: "BOUNCY CASTLE",           category: "🏰 Things" },
+  { phrase: "TREASURE CHEST",          category: "💰 Things" },
+  { phrase: "MAGIC WAND",              category: "🪄 Things" },
+  { phrase: "HOT AIR BALLOON",         category: "🎈 Things" },
+  { phrase: "PIRATE SHIP",             category: "🏴 Things" },
+  { phrase: "ROCKET SHIP",             category: "🚀 Things" },
+  { phrase: "SPARKLING DIAMOND",       category: "💎 Things" },
+  { phrase: "SPINNING PINWHEEL",       category: "🌀 Things" },
+  { phrase: "PAPER AIRPLANE",          category: "✈️ Things" },
+  { phrase: "SNOW GLOBE",              category: "❄️ Things" },
+  { phrase: "BIRTHDAY BALLOON",        category: "🎈 Things" },
+  { phrase: "GOLDEN TROPHY",           category: "🏆 Things" },
+  { phrase: "CRYSTAL BALL",            category: "🔮 Things" },
+  { phrase: "MAGIC CARPET",            category: "🪄 Things" },
+  { phrase: "FRIENDLY ROBOT",          category: "🤖 Things" },
+  { phrase: "GIANT SANDCASTLE",        category: "🏖 Things" },
+  { phrase: "COLORFUL UMBRELLA",       category: "☂️ Things" },
+  { phrase: "AUTUMN LEAVES",           category: "🍂 Things" },
+  { phrase: "FLUFFY CLOUD",            category: "☁️ Things" },
+  { phrase: "FALLING SNOWFLAKE",       category: "❄️ Things" },
+  { phrase: "BUBBLING FOUNTAIN",       category: "⛲ Things" },
+  { phrase: "GIANT PUMPKIN",           category: "🎃 Things" },
+  { phrase: "GINGERBREAD HOUSE",       category: "🏠 Things" },
+  { phrase: "WOODEN SAILBOAT",         category: "⛵ Things" },
+  { phrase: "BOUNCY TRAMPOLINE",       category: "🤸 Things" },
+  { phrase: "GLOWING LANTERN",         category: "🏮 Things" },
+  { phrase: "SPINNING TOP",            category: "🌀 Things" },
+  { phrase: "PLAYING SOCCER",          category: "⚽ Sports" },
+  { phrase: "SHOOTING HOOPS",          category: "🏀 Sports" },
+  { phrase: "TENNIS MATCH",            category: "🎾 Sports" },
+  { phrase: "SWIMMING LAPS",           category: "🏊 Sports" },
+  { phrase: "RIDING A BIKE",           category: "🚴 Sports" },
+  { phrase: "HITTING A HOMERUN",       category: "⚾ Sports" },
+  { phrase: "JUMPING ROPE",            category: "🤸 Sports" },
+  { phrase: "PLAYING VOLLEYBALL",      category: "🏐 Sports" },
+  { phrase: "HOCKEY PUCK",             category: "🏒 Sports" },
+  { phrase: "SKIING DOWN A SLOPE",     category: "⛷ Sports" },
+  { phrase: "GYMNASTICS ROUTINE",      category: "🤸 Sports" },
+  { phrase: "DODGEBALL GAME",          category: "🎯 Sports" },
+  { phrase: "BOWLING STRIKE",          category: "🎳 Sports" },
+  { phrase: "PING PONG MATCH",         category: "🏓 Sports" },
+  { phrase: "TAG YOU ARE IT",          category: "🏃 Sports" },
+  { phrase: "HIDE AND SEEK",           category: "🙈 Sports" },
+  { phrase: "TREASURE HUNT",           category: "🗺 Sports" },
+  { phrase: "BOARD GAME NIGHT",        category: "🎲 Sports" },
+  { phrase: "PLAYGROUND RACE",         category: "🏃 Sports" },
+  { phrase: "JUMP ON THE TRAMPOLINE",  category: "🤸 Sports" },
+  { phrase: "MATH IS FUN",             category: "📐 School" },
+  { phrase: "LEARNING THE ALPHABET",   category: "🔤 School" },
+  { phrase: "READING A GOOD BOOK",     category: "📖 School" },
+  { phrase: "WRITING A STORY",         category: "✏️ School" },
+  { phrase: "SCIENCE EXPERIMENT",      category: "🔬 School" },
+  { phrase: "ART CLASS PROJECT",       category: "🎨 School" },
+  { phrase: "MUSIC LESSON",            category: "🎵 School" },
+  { phrase: "SPELLING BEE",            category: "🐝 School" },
+  { phrase: "SCHOOL BUS RIDE",         category: "🚌 School" },
+  { phrase: "RECESS TIME",             category: "🛝 School" },
+  { phrase: "CLASS FIELD TRIP",        category: "🗺 School" },
+  { phrase: "DRAWING PICTURES",        category: "✏️ School" },
+  { phrase: "COUNTING NUMBERS",        category: "🔢 School" },
+  { phrase: "LEARNING NEW WORDS",      category: "📚 School" },
+  { phrase: "SINGING A SONG",          category: "🎶 School" },
+  { phrase: "BUILDING WITH BLOCKS",    category: "🧱 School" },
+  { phrase: "FINGER PAINTING",         category: "🎨 School" },
+  { phrase: "SHOW AND TELL",           category: "🗣 School" },
+  { phrase: "LIBRARY TIME",            category: "📚 School" },
+  { phrase: "CLASSROOM FRIENDS",       category: "👫 School" },
+  { phrase: "BLOOMING FLOWERS",        category: "🌸 Nature" },
+  { phrase: "TALL OAK TREE",           category: "🌳 Nature" },
+  { phrase: "CRYSTAL CLEAR LAKE",      category: "💧 Nature" },
+  { phrase: "RUNNING RIVER",           category: "🏞 Nature" },
+  { phrase: "SANDY DESERT",            category: "🏜 Nature" },
+  { phrase: "GREEN VALLEY",            category: "🌿 Nature" },
+  { phrase: "WILD WATERFALL",          category: "💧 Nature" },
+  { phrase: "GLOWING SUNSET",          category: "🌅 Nature" },
+  { phrase: "MOONLIT SKY",             category: "🌙 Nature" },
+  { phrase: "SPARKLING STARS",         category: "✨ Nature" },
+  { phrase: "MORNING DEW",             category: "💧 Nature" },
+  { phrase: "AUTUMN FOREST",           category: "🍂 Nature" },
+  { phrase: "SPRING GARDEN",           category: "🌷 Nature" },
+  { phrase: "SUMMER BREEZE",           category: "🌬 Nature" },
+  { phrase: "WINTER WONDERLAND",       category: "❄️ Nature" },
+  { phrase: "OCEAN WAVES",             category: "🌊 Nature" },
+  { phrase: "MEADOW OF DAISIES",       category: "🌼 Nature" },
+  { phrase: "ROCKY MOUNTAINS",         category: "⛰ Nature" },
+  { phrase: "THUNDER AND LIGHTNING",   category: "⛈ Nature" },
+  { phrase: "RAINBOW IN THE SKY",      category: "🌈 Nature" },
+  { phrase: "HAPPY HALLOWEEN",         category: "🎃 Holidays" },
+  { phrase: "MERRY CHRISTMAS",         category: "🎄 Holidays" },
+  { phrase: "HAPPY NEW YEAR",          category: "🎆 Holidays" },
+  { phrase: "TRICK OR TREAT",          category: "🎃 Holidays" },
+  { phrase: "CHRISTMAS MORNING",       category: "🎁 Holidays" },
+  { phrase: "FIREWORKS SHOW",          category: "🎆 Holidays" },
+  { phrase: "EASTER EGG HUNT",         category: "🥚 Holidays" },
+  { phrase: "THANKSGIVING FEAST",      category: "🦃 Holidays" },
+  { phrase: "VALENTINES DAY",          category: "❤️ Holidays" },
+  { phrase: "FOURTH OF JULY",          category: "🎆 Holidays" },
+  { phrase: "SPOOKY PUMPKIN",          category: "🎃 Holidays" },
+  { phrase: "CHRISTMAS TREE",          category: "🎄 Holidays" },
+  { phrase: "SNOWMAN BUILDING",        category: "☃️ Holidays" },
+  { phrase: "HOLIDAY PARADE",          category: "🎉 Holidays" },
+  { phrase: "CANDY CANE LANE",         category: "🍬 Holidays" },
+  { phrase: "JACK O LANTERN",          category: "🎃 Holidays" },
+  { phrase: "EASTER BUNNY",            category: "🐰 Holidays" },
+  { phrase: "SUMMER VACATION",         category: "🏖 Holidays" },
+  { phrase: "WINTER BREAK",            category: "❄️ Holidays" },
+  { phrase: "SPRING FESTIVAL",         category: "🌸 Holidays" },
+  { phrase: "SPEEDY RACE CAR",         category: "🏎 Transportation" },
+  { phrase: "YELLOW SCHOOL BUS",       category: "🚌 Transportation" },
+  { phrase: "STEAM TRAIN",             category: "🚂 Transportation" },
+  { phrase: "JET AIRPLANE",            category: "✈️ Transportation" },
+  { phrase: "FIRE TRUCK",              category: "🚒 Transportation" },
+  { phrase: "HELICOPTER RIDE",         category: "🚁 Transportation" },
+  { phrase: "SPACE SHUTTLE LAUNCH",    category: "🚀 Transportation" },
+  { phrase: "DOUBLE DECKER BUS",       category: "🚌 Transportation" },
+  { phrase: "MOTORCYCLE RIDE",         category: "🏍 Transportation" },
+  { phrase: "BUMPER CARS",             category: "🚗 Transportation" },
+  { phrase: "TROLLEY CAR",             category: "🚃 Transportation" },
+  { phrase: "MONSTER TRUCK",           category: "🚛 Transportation" },
+  { phrase: "SUBMARINE DIVE",          category: "🤿 Transportation" },
+  { phrase: "HOT AIR BALLOON RIDE",    category: "🎈 Transportation" },
+  { phrase: "SAILBOAT ON THE OCEAN",   category: "⛵ Transportation" },
+  { phrase: "PLANET EARTH",            category: "🌍 Science" },
+  { phrase: "THE SOLAR SYSTEM",        category: "🪐 Science" },
+  { phrase: "MILKY WAY GALAXY",        category: "🌌 Science" },
+  { phrase: "ERUPTING VOLCANO",        category: "🌋 Science" },
+  { phrase: "SCIENCE FAIR PROJECT",    category: "🔬 Science" },
+  { phrase: "MIXING COLORS",           category: "🎨 Science" },
+  { phrase: "BUTTERFLY LIFE CYCLE",    category: "🦋 Science" },
+  { phrase: "WATER CYCLE",             category: "💧 Science" },
+  { phrase: "GRAVITY PULLS DOWN",      category: "⬇️ Science" },
+  { phrase: "MAGNETIC ATTRACTION",     category: "🧲 Science" },
+  { phrase: "LIVING THINGS GROW",      category: "🌱 Science" },
+  { phrase: "WEATHER FORECAST",        category: "🌦 Science" },
+  { phrase: "STATES OF MATTER",        category: "🧪 Science" },
+  { phrase: "EXPERIMENT TIME",         category: "🔬 Science" },
+  { phrase: "STARS AND PLANETS",       category: "🪐 Science" },
+  { phrase: "PLAYING THE PIANO",       category: "🎹 Music" },
+  { phrase: "GUITAR SOLO",             category: "🎸 Music" },
+  { phrase: "MARCHING BAND",           category: "🎺 Music" },
+  { phrase: "SINGING IN THE RAIN",     category: "🎤 Music" },
+  { phrase: "DRUM BEAT",               category: "🥁 Music" },
+  { phrase: "VIOLIN CONCERT",          category: "🎻 Music" },
+  { phrase: "ROCK AND ROLL",           category: "🎸 Music" },
+  { phrase: "DANCE TO THE BEAT",       category: "💃 Music" },
+  { phrase: "TRUMPET FANFARE",         category: "🎺 Music" },
+  { phrase: "MUSICAL THEATER",         category: "🎭 Music" },
+  { phrase: "JAZZ BAND",               category: "🎷 Music" },
+  { phrase: "SING ALONG SONG",         category: "🎤 Music" },
+  { phrase: "NURSERY RHYME",           category: "🎵 Music" },
+  { phrase: "CHRISTMAS CAROL",         category: "🎄 Music" },
+  { phrase: "CLAP YOUR HANDS",         category: "👏 Music" },
+];
+
+const SEGMENTS = [
+  { label: "$300",      value: 300,        color: "#E91E8C" },
+  { label: "$500",      value: 500,        color: "#FF9800" },
+  { label: "WILD!",     value: "free",     color: "#9C27B0" },
+  { label: "$700",      value: 700,        color: "#4CAF50" },
+  { label: "$1000",     value: 1000,       color: "#2196F3" },
+  { label: "BANKRUPT!", value: "bankrupt", color: "#150505" },
+  { label: "$400",      value: 400,        color: "#FF5722" },
+  { label: "$200",      value: 200,        color: "#673AB7" },
+  { label: "$600",      value: 600,        color: "#009688" },
+  { label: "FREE PLAY", value: "free",     color: "#FFC107" },
+  { label: "$800",      value: 800,        color: "#C62828" },
+  { label: "$250",      value: 250,        color: "#0288D1" },
+  { label: "DOUBLE!",   value: "double",   color: "#D81B60" },
+  { label: "OOPS!",     value: "again",    color: "#546E7A" },
+  { label: "$2500",     value: 2500,       color: "#4A148C" },
+  { label: "$150",      value: 150,        color: "#BF360C" },
+];
+
+const VOWELS      = new Set(['A','E','I','O','U']);
+const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const KB_ROWS     = [
+  'QWERTYUIOP'.split(''),
+  'ASDFGHJKL'.split(''),
+  'ZXCVBNM'.split(''),
+];
+
+let _ac = null;
+function getAC() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (_ac.state === 'suspended') _ac.resume();
+  return _ac;
+}
+function tone(freq, startSec, durSec, type='sine', vol=0.3, freqEnd=null) {
+  try {
+    const ac=getAC(), osc=ac.createOscillator(), gain=ac.createGain();
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.type=type;
+    osc.frequency.setValueAtTime(freq, ac.currentTime+startSec);
+    if(freqEnd) osc.frequency.linearRampToValueAtTime(freqEnd, ac.currentTime+startSec+durSec);
+    gain.gain.setValueAtTime(vol, ac.currentTime+startSec);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+startSec+durSec);
+    osc.start(ac.currentTime+startSec);
+    osc.stop(ac.currentTime+startSec+durSec+0.02);
+  } catch(e){}
+}
+function sndTick(p)      { tone(p,0,0.03,'square',0.12); }
+function sndSpinStart()  { tone(150,0,0.4,'sawtooth',0.18,900); }
+function sndMoney(a)     { tone(523,0,0.12); tone(659,0.11,0.12); if(a>=500)tone(784,0.22,0.13); if(a>=1000)tone(1047,0.33,0.18); if(a>=2500){tone(1175,0.44,0.12);tone(1319,0.54,0.3);} }
+function sndBankrupt()   { tone(350,0,0.25,'sawtooth',0.22); tone(300,0.25,0.25,'sawtooth',0.18); tone(230,0.5,0.45,'sawtooth',0.14); }
+function sndFreePlay()   { [523,659,784,1047,1319].forEach((f,i)=>tone(f,i*0.07,0.12)); }
+function sndDouble()     { tone(523,0,0.08);tone(784,0.09,0.08);tone(1047,0.18,0.08);tone(1319,0.27,0.15);tone(1047,0.42,0.08);tone(1319,0.5,0.25); }
+function sndOops()       { tone(400,0,0.15,'triangle',0.15);tone(350,0.15,0.2,'triangle',0.1); }
+function sndCorrect()    { tone(880,0,0.08);tone(1047,0.1,0.18); }
+function sndWrong()      { tone(220,0,0.15,'sawtooth',0.2);tone(196,0.15,0.18,'sawtooth',0.15); }
+function sndWin()        { [523,659,784,1047,784,1047,1319].forEach((f,i)=>tone(f,i*0.10,i===6?0.45:0.09)); }
+
+let G={};
+function newState(){return{puzzles:shuffle([...PUZZLES]),puzzleIdx:0,phrase:'',revealed:new Set(),usedLetters:new Set(),money:0,phase:'spin',spinning:false,landedValue:null,freePlay:false,doubleNext:false,prevPhase:null};}
+
+const canvas=document.getElementById('wheelCanvas');
+const ctx=canvas.getContext('2d');
+let wheelAngle=0;
+
+function drawWheel(angle){
+  const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,n=SEGMENTS.length,sa=(2*Math.PI)/n;
+  const outerR=cx-3,rimW=26,R=outerR-rimW;
+  ctx.clearRect(0,0,W,H);
+  SEGMENTS.forEach((seg,i)=>{
+    const start=angle+i*sa,end=start+sa,mid=start+sa/2;
+    const gx1=cx+(R*0.3)*Math.cos(mid),gy1=cy+(R*0.3)*Math.sin(mid);
+    const gx2=cx+R*Math.cos(mid),gy2=cy+R*Math.sin(mid);
+    const grad=ctx.createLinearGradient(gx1,gy1,gx2,gy2);
+    grad.addColorStop(0,lighten(seg.color,40));
+    grad.addColorStop(1,seg.color);
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,start,end);ctx.closePath();
+    ctx.fillStyle=grad;ctx.fill();
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+R*Math.cos(start),cy+R*Math.sin(start));
+    ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=2.5;ctx.stroke();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(mid);ctx.textAlign='right';
+    ctx.fillStyle='#fff';ctx.shadowColor='rgba(0,0,0,0.8)';ctx.shadowBlur=5;
+    const lbl=seg.label,parts=lbl.split(' '),sz=lbl.length>8?10:lbl.length>5?12:14;
+    ctx.font=`bold ${sz}px Arial,sans-serif`;
+    if(parts.length>1){ctx.fillText(parts[0],R-12,-5);ctx.fillText(parts.slice(1).join(' '),R-12,8);}
+    else ctx.fillText(lbl,R-12,5);
+    ctx.restore();
+  });
+  const dotCount=n*3;
+  const dotColors=['#FFD700','#FF4E6A','#4ECDC4','#A29BFE','#6BCB77','#FF922B'];
+  for(let i=0;i<dotCount;i++){
+    const a=angle+(i/dotCount)*2*Math.PI,dotR=outerR-rimW/2;
+    const dx=cx+dotR*Math.cos(a),dy=cy+dotR*Math.sin(a);
+    ctx.beginPath();ctx.arc(dx,dy,5,0,2*Math.PI);
+    ctx.fillStyle=dotColors[i%dotColors.length];
+    ctx.shadowColor=dotColors[i%dotColors.length];ctx.shadowBlur=8;ctx.fill();ctx.shadowBlur=0;
+  }
+  ctx.beginPath();ctx.arc(cx,cy,outerR,0,2*Math.PI);ctx.strokeStyle='#FFD700';ctx.lineWidth=3;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,R,0,2*Math.PI);ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=2;ctx.stroke();
+  const hubR=30,hubGrd=ctx.createRadialGradient(cx-5,cy-5,3,cx,cy,hubR);
+  hubGrd.addColorStop(0,'#FFE566');hubGrd.addColorStop(1,'#c47a00');
+  ctx.beginPath();ctx.arc(cx,cy,hubR,0,2*Math.PI);ctx.fillStyle=hubGrd;ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
+  ctx.font='20px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowBlur=0;
+  ctx.fillText('⭐',cx,cy);
+}
+function lighten(hex,amt){const n=parseInt(hex.replace('#',''),16);return `rgb(${Math.min(255,(n>>16)+amt)},${Math.min(255,((n>>8)&0xFF)+amt)},${Math.min(255,(n&0xFF)+amt)})`;}
+
+let spinRaf=null,lastSegIdx=-1;
+function getCurrentSegIdx(angle){const n=SEGMENTS.length,sa=(2*Math.PI)/n,norm=(((-Math.PI/2-angle)%(2*Math.PI))+2*Math.PI)%(2*Math.PI);return Math.floor(norm/sa)%n;}
+
+function spin(){
+  if(G.spinning||G.phase!=='spin')return;
+  G.spinning=true;el('spinBtn').disabled=true;disableKeyboard();sndSpinStart();
+  const n=SEGMENTS.length,sa=(2*Math.PI)/n,tgt=Math.floor(Math.random()*n);
+  const tgtMid=tgt*sa+sa/2,fullRot=(6+Math.floor(Math.random()*5))*2*Math.PI;
+  const base=(-Math.PI/2-tgtMid-wheelAngle),extra=((base%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  const totalSpin=fullRot+extra,startAngle=wheelAngle,startTime=performance.now();
+  const duration=3500+Math.random()*1500;
+  lastSegIdx=getCurrentSegIdx(wheelAngle);
+  function frame(now){
+    const t=Math.min((now-startTime)/duration,1),e=1-Math.pow(1-t,4);
+    wheelAngle=startAngle+totalSpin*e;drawWheel(wheelAngle);
+    const cur=getCurrentSegIdx(wheelAngle);
+    if(cur!==lastSegIdx){lastSegIdx=cur;const spd=(1-Math.pow(1-t,3));sndTick(300+spd*500+Math.random()*80);}
+    if(t<1){spinRaf=requestAnimationFrame(frame);}
+    else{wheelAngle=startAngle+totalSpin;drawWheel(wheelAngle);G.spinning=false;handleLanding(SEGMENTS[tgt]);}
+  }
+  spinRaf=requestAnimationFrame(frame);
+}
+
+function handleLanding(seg){
+  G.landedValue=seg.value;
+  const unrevC=ALL_LETTERS.filter(l=>!VOWELS.has(l)&&!G.usedLetters.has(l)&&G.phrase.includes(l));
+  if(seg.value==='bankrupt'){G.money=0;updateMoney();sndBankrupt();setMsg('💸 BANKRUPT! Lost all your money! Spin again!','bankrupt');G.phase='spin';el('spinBtn').disabled=false;}
+  else if(seg.value==='again'){sndOops();setMsg('😬 Oops! Spin again!','');G.phase='spin';el('spinBtn').disabled=false;}
+  else if(seg.value==='double'){sndDouble();G.doubleNext=true;setMsg('✨ DOUBLE! Spin again — next letter earns DOUBLE!','correct');G.phase='spin';el('spinBtn').disabled=false;}
+  else if(seg.value==='free'){sndFreePlay();G.freePlay=true;G.phase='guess';
+    if(unrevC.length===0){setMsg('🌟 FREE PLAY! Pick a vowel for free!','correct');enableKeyboard('vowels');}
+    else{setMsg('🌟 FREE PLAY! Pick ANY letter for free!','correct');enableKeyboard('all');}
+  }else{
+    sndMoney(seg.value);
+    if(unrevC.length===0){setMsg(`💰 ${seg.label} — no consonants left! Buy a vowel or solve!`,'');G.phase='spin';el('spinBtn').disabled=false;}
+    else{const d=G.doubleNext?' (DOUBLED!)':'';setMsg(`💰 Landed on ${seg.label}${d}! Pick a consonant!`,'correct');G.phase='guess';enableKeyboard('consonants');}
+  }
+  updateActionButtons();
+}
+
+function buildKeyboard(){
+  const kb=el('keyboard');kb.innerHTML='';
+  KB_ROWS.forEach(row=>{
+    const div=document.createElement('div');div.className='kb-row';
+    row.forEach(l=>{
+      const btn=document.createElement('button');
+      btn.className=`key-btn ${VOWELS.has(l)?'vowel':'consonant'}`;
+      btn.textContent=l;btn.id=`key-${l}`;btn.disabled=true;
+      if(VOWELS.has(l))btn.classList.add('vowel-dimmed');
+      btn.addEventListener('click',()=>guessLetter(l));
+      div.appendChild(btn);
+    });
+    kb.appendChild(div);
+  });
+}
+
+function enableKeyboard(mode){
+  ALL_LETTERS.forEach(l=>{
+    const btn=el(`key-${l}`);if(!btn||G.usedLetters.has(l))return;
+    const v=VOWELS.has(l);
+    if(mode==='consonants'){if(!v){btn.disabled=false;btn.classList.remove('consonant-dimmed');}else{btn.disabled=true;btn.classList.add('vowel-dimmed');btn.classList.remove('consonant-dimmed');}}
+    else if(mode==='vowels'){if(v){btn.disabled=false;btn.classList.remove('vowel-dimmed');}else{btn.disabled=true;btn.classList.add('consonant-dimmed');btn.classList.remove('vowel-dimmed');}}
+    else if(mode==='all'){btn.disabled=false;btn.classList.remove('vowel-dimmed','consonant-dimmed');}
+  });
+}
+
+function disableKeyboard(){
+  ALL_LETTERS.forEach(l=>{
+    const btn=el(`key-${l}`);if(!btn||G.usedLetters.has(l))return;
+    btn.disabled=true;
+    if(VOWELS.has(l)){btn.classList.add('vowel-dimmed');btn.classList.remove('consonant-dimmed');}
+    else btn.classList.remove('vowel-dimmed','consonant-dimmed');
+  });
+}
+
+function guessLetter(letter){
+  if(G.usedLetters.has(letter))return;
+  G.usedLetters.add(letter);disableKeyboard();
+  const btn=el(`key-${letter}`),count=occurrences(letter);
+  if(count>0){
+    G.revealed.add(letter);if(btn)btn.classList.add('used-correct');
+    let earned=0;
+    if(G.phase==='buyVowel'){G.money=Math.max(0,G.money-250);updateMoney();sndCorrect();}
+    else if(!G.freePlay&&!VOWELS.has(letter)&&typeof G.landedValue==='number'){
+      const mult=G.doubleNext?2:1;G.doubleNext=false;earned=G.landedValue*count*mult;G.money+=earned;updateMoney();sndCorrect();
+    }else{G.doubleNext=false;sndCorrect();}
+    revealLetters(letter);
+    const earnStr=earned>0?` +$${earned.toLocaleString()}!`:'';
+    setMsg(`🎉 "${letter}" is in the puzzle${count>1?` × ${count}`:''}!${earnStr}`,'correct');
+  }else{if(btn)btn.classList.add('used-wrong');G.doubleNext=false;sndWrong();setMsg(`❌ No "${letter}" in this puzzle! Keep going!`,'wrong');}
+  G.freePlay=false;G.phase='spin';el('cancelVowelBtn').classList.remove('visible');setKbLabel(false);
+  setTimeout(()=>{if(!checkWin()){el('spinBtn').disabled=false;if(count>0)setMsg('Great! Spin again or try to solve! 🎡','');updateActionButtons();}},count>0?1300:700);
+}
+
+function startBuyVowel(){
+  if(G.money<250){sndWrong();setMsg('💸 Need at least $250 to buy a vowel!','wrong');return;}
+  const av=[...VOWELS].filter(v=>!G.usedLetters.has(v)&&G.phrase.includes(v));
+  if(av.length===0){setMsg('All vowels revealed! Guess a consonant!','');return;}
+  G.prevPhase=G.phase;G.phase='buyVowel';el('spinBtn').disabled=true;
+  disableKeyboard();enableKeyboard('vowels');
+  setMsg('Click a PINK vowel to buy it for $250! 🔤','buyvowel');
+  el('cancelVowelBtn').classList.add('visible');setKbLabel(true);updateActionButtons();
+}
+
+function cancelBuyVowel(){
+  G.phase=G.prevPhase||'spin';el('cancelVowelBtn').classList.remove('visible');disableKeyboard();
+  if(G.phase==='guess'){if(G.freePlay)enableKeyboard('all');else enableKeyboard('consonants');}
+  else el('spinBtn').disabled=false;
+  setKbLabel(false);setMsg('Spin the wheel! 🎡','');updateActionButtons();
+}
+
+function setKbLabel(b){el('kbLabel').textContent=b?'🔤 Click a PINK Vowel to buy it for $250!':'🔡 Pick a Letter — Teal = Consonant  |  Pink = Vowel';}
+
+function renderPuzzle(){
+  const board=el('puzzleBoard');board.innerHTML='';
+  const words=G.phrase.split(' ');
+  words.forEach((word,wi)=>{
+    const wDiv=document.createElement('div');wDiv.className='word-group';
+    word.split('').forEach((ch,ci)=>{
+      const tile=document.createElement('div');
+      tile.className=`letter-tile ${G.revealed.has(ch)?'revealed':'blank'}`;
+      if(G.revealed.has(ch))tile.textContent=ch;
+      tile.id=`tile-${wi}-${ci}`;wDiv.appendChild(tile);
+    });
+    board.appendChild(wDiv);
+    if(wi<words.length-1){const sp=document.createElement('div');sp.style.width='14px';board.appendChild(sp);}
+  });
+}
+
+function revealLetters(letter){
+  const words=G.phrase.split(' ');let delay=0;
+  words.forEach((word,wi)=>word.split('').forEach((ch,ci)=>{
+    if(ch===letter){delay+=130;const d=delay;setTimeout(()=>{const t=el(`tile-${wi}-${ci}`);if(t){t.className='letter-tile revealed';t.textContent=ch;}},d);}
+  }));
+}
+
+function checkWin(){
+  const all=[...new Set(G.phrase.replace(/ /g,'').split(''))];
+  if(all.every(l=>G.revealed.has(l))){setTimeout(triggerWin,500);return true;}return false;
+}
+
+function triggerWin(){
+  G.phase='won';disableKeyboard();el('spinBtn').disabled=true;el('cancelVowelBtn').classList.remove('visible');updateActionButtons();
+  G.phrase.split('').forEach(c=>{if(/[A-Z]/.test(c))G.revealed.add(c);});renderPuzzle();
+  el('winPhrase').textContent=G.phrase;el('winMoney').textContent=`💰 You collected $${G.money.toLocaleString()}!`;
+  el('winOverlay').classList.add('active');sndWin();launchConfetti();
+}
+
+function nextPuzzle(){el('winOverlay').classList.remove('active');G.puzzleIdx=(G.puzzleIdx+1)%G.puzzles.length;loadPuzzle(G.puzzleIdx);}
+
+function openSolveModal(){if(G.phase==='won')return;el('solveInput').value='';el('solveError').style.display='none';el('solveModal').classList.add('active');setTimeout(()=>el('solveInput').focus(),80);}
+function closeSolveModal(){el('solveModal').classList.remove('active');}
+function checkSolve(){
+  const ans=el('solveInput').value.trim().toUpperCase();
+  if(ans===G.phrase){closeSolveModal();triggerWin();}
+  else{const e=el('solveError');e.style.display='block';e.style.animation='none';void e.offsetWidth;e.style.animation='shake 0.4s ease';sndWrong();}
+}
+
+function launchConfetti(){
+  const colors=['#FFD700','#FF4E6A','#4ECDC4','#A29BFE','#6BCB77','#FF922B','#F06292'];
+  for(let i=0;i<90;i++){
+    const p=document.createElement('div');p.className='confetti-piece';
+    p.style.left=`${Math.random()*100}vw`;p.style.background=colors[Math.floor(Math.random()*colors.length)];
+    p.style.width=`${6+Math.random()*8}px`;p.style.height=`${10+Math.random()*14}px`;
+    p.style.animationDuration=`${1.5+Math.random()*2.5}s`;p.style.animationDelay=`${Math.random()*1.2}s`;
+    p.style.borderRadius=Math.random()>0.5?'50%':'3px';
+    document.body.appendChild(p);p.addEventListener('animationend',()=>p.remove());
+  }
+}
+
+function loadPuzzle(idx){
+  const p=G.puzzles[idx];G.phrase=p.phrase;G.revealed=new Set();G.usedLetters=new Set();
+  G.money=0;G.phase='spin';G.landedValue=null;G.freePlay=false;G.doubleNext=false;G.prevPhase=null;
+  el('categoryDisplay').textContent=p.category;el('puzzleNum').textContent=`${idx+1} / ${G.puzzles.length}`;
+  updateMoney();setMsg('Spin the wheel to start! 🎡','');setKbLabel(false);
+  el('spinBtn').disabled=false;el('cancelVowelBtn').classList.remove('visible');
+  renderPuzzle();buildKeyboard();disableKeyboard();updateActionButtons();
+}
+
+function updateMoney(){el('moneyDisplay').textContent=`$${G.money.toLocaleString()}`;updateActionButtons();}
+function updateActionButtons(){
+  const won=G.phase==='won',inBuy=G.phase==='buyVowel';
+  const av=[...VOWELS].filter(v=>!G.usedLetters.has(v)&&G.phrase.includes(v));
+  el('buyVowelBtn').disabled=won||inBuy||G.money<250||av.length===0||G.spinning;
+  el('solveBtn').disabled=won||G.spinning;
+}
+function setMsg(text,type){const b=el('messageBox');b.textContent=text;b.className=`message-box${type?' '+type:''}`;}
+function el(id){return document.getElementById(id);}
+function occurrences(letter){return G.phrase.split('').filter(c=>c===letter).length;}
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+
+el('spinBtn').addEventListener('click',spin);
+el('buyVowelBtn').addEventListener('click',startBuyVowel);
+el('cancelVowelBtn').addEventListener('click',cancelBuyVowel);
+el('solveBtn').addEventListener('click',openSolveModal);
+el('solveSubmitBtn').addEventListener('click',checkSolve);
+el('solveCancelBtn').addEventListener('click',closeSolveModal);
+el('nextBtn').addEventListener('click',nextPuzzle);
+el('solveInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkSolve();});
+document.addEventListener('keydown',e=>{
+  if(el('solveModal').classList.contains('active'))return;
+  const l=e.key.toUpperCase();if(!/^[A-Z]$/.test(l))return;
+  const btn=el(`key-${l}`);if(btn&&!btn.disabled)guessLetter(l);
+});
+
+G=newState();drawWheel(wheelAngle);loadPuzzle(0);
+</script>
+</body>
+</html>
